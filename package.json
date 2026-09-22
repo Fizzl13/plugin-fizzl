@@ -1,0 +1,94 @@
+{
+  "name": "plugin-fizzl",
+  "version": "0.1.0",
+  "description": "ElizaOS plugin for Fizzl's x402 agent services: Ichimoku Cloud trading signals (Solana/Base) and PlainText wallet-approval risk checks (Base). Pays per call in USDC.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Fizzl13/plugin-fizzl"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepare": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --test"
+  },
+  "peerDependencies": {
+    "@elizaos/core": "^1.0.0"
+  },
+  "dependencies": {
+    "@solana/kit": "^8.3.0",
+    "@x402/core": "^2.27.0",
+    "@x402/evm": "^2.27.0",
+    "@x402/fetch": "^2.27.0",
+    "@x402/svm": "^2.27.0",
+    "viem": "^2.37.0"
+  },
+  "devDependencies": {
+    "@elizaos/core": "1.7.2",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  },
+  "agentConfig": {
+    "pluginType": "elizaos:plugin:1.0.0",
+    "pluginParameters": {
+      "SVM_PRIVATE_KEY": {
+        "type": "string",
+        "description": "Solana secret key (base58) that pays Ichimoku Signal in USDC on Solana",
+        "required": false,
+        "sensitive": true
+      },
+      "EVM_PRIVATE_KEY": {
+        "type": "string",
+        "description": "EVM private key (0x\u2026) that pays in USDC on Base; required for PlainText, optional for Ichimoku Signal",
+        "required": false,
+        "sensitive": true
+      },
+      "FIZZL_MAX_PAYMENT_USD": {
+        "type": "string",
+        "description": "Refuse any single payment above this amount in USD",
+        "required": false,
+        "default": "0.25"
+      },
+      "ICHIMOKU_SIGNAL_URL": {
+        "type": "string",
+        "description": "Ichimoku Signal base URL",
+        "required": false,
+        "default": "https://ichimoku-signal.onrender.com"
+      },
+      "PLAINTEXT_URL": {
+        "type": "string",
+        "description": "PlainText base URL",
+        "required": false,
+        "default": "https://smartcontractexplainer.onrender.com"
+      },
+      "SOLANA_RPC_URL": {
+        "type": "string",
+        "description": "Solana RPC used to build payments (default: public mainnet RPC)",
+        "required": false
+      }
+    }
+  },
+  "keywords": [
+    "elizaos",
+    "elizaos-plugin",
+    "x402",
+    "solana",
+    "base",
+    "trading",
+    "ichimoku",
+    "wallet-security",
+    "approvals"
+  ],
+  "license": "MIT"
+}
