@@ -178,7 +178,32 @@ export async function startFixtures() {
     return paidRoute({ accepts: [baseOption(route.amount)], resourceUrl: (r) => `${plaintextUrl}${r.url}`, state, respond: route.respond })(req, res, body);
   });
 
-  return { state, rpc, ichimokuUrl, plaintextUrl, ichimokuPrice };
+  let doctorUrl;
+  doctorUrl = await listen(async (req, res, body) => {
+    const url = new URL(req.url, "http://x");
+    if (url.pathname !== "/api/v1/diagnose" || req.method !== "GET") {
+      res.statusCode = 404;
+      return res.end("{}");
+    }
+    return paidRoute({
+      accepts: [baseOption("10000"), solanaOption("10000")],
+      resourceUrl: (r) => `${doctorUrl}${r.url}`,
+      state,
+      respond: () => ({
+        url: url.searchParams.get("url"),
+        method: url.searchParams.get("method") || "GET",
+        overall: "fail",
+        checks: [
+          { id: "returns-402", group: "challenge", status: "pass", message: "Endpoint returns 402 Payment Required for GET." },
+          { id: "body-mirror", group: "challenge", status: "warn", message: "Payment challenge is delivered only via the header.", hint: "Mirror the challenge into the 402 JSON body." },
+          { id: "accepts.amount", group: "accepts", status: "fail", message: 'accepts[0]: amount "0.01" is not in atomic units.', hint: "Use 10000 for $0.01 USDC." },
+        ],
+        challenge: null,
+      }),
+    })(req, res, body);
+  });
+
+  return { state, rpc, ichimokuUrl, plaintextUrl, doctorUrl, ichimokuPrice };
 }
 
 // Minimal stand-in for an ElizaOS IAgentRuntime: settings only.

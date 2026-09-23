@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseSignalInput, parseWalletInput, parseApprovalPayload } from "../dist/parse.js";
+import { parseSignalInput, parseWalletInput, parseApprovalPayload, parseDiagnoseInput } from "../dist/parse.js";
 
 test("parseSignalInput: pairs, bare tickers and intervals", () => {
   const cases = [
@@ -29,4 +29,12 @@ test("parseApprovalPayload: fenced JSON, bare JSON, options", () => {
   assert.deepEqual(parseApprovalPayload('is this ok {"spender":"x","amount":"1"} thanks'), { spender: "x", amount: "1" });
   assert.deepEqual(parseApprovalPayload("", { data: { b: 2 } }), { b: 2 });
   assert.equal(parseApprovalPayload("no json"), null);
+});
+
+test("parseDiagnoseInput: first http(s) URL, trailing punctuation dropped, POST only when asked", () => {
+  assert.deepEqual(parseDiagnoseInput("check https://api.example.com/paid."), { url: "https://api.example.com/paid" });
+  assert.deepEqual(parseDiagnoseInput("POST endpoint (https://a.b/x?y=1)"), { url: "https://a.b/x?y=1", method: "POST" });
+  assert.deepEqual(parseDiagnoseInput("anything", { url: "http://h.io/p", method: "get" }), { url: "http://h.io/p", method: "GET" });
+  assert.equal(parseDiagnoseInput("no url here"), null);
+  assert.equal(parseDiagnoseInput("x", { url: "ftp://h.io" }), null);
 });

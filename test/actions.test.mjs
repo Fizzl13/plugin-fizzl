@@ -7,6 +7,7 @@ const action = (name) => plugin.actions.find((a) => a.name === name);
 const ICHIMOKU = action("FIZZL_ICHIMOKU_SIGNAL");
 const CHECK = action("FIZZL_CHECK_WALLET_APPROVALS");
 const EXPLAIN = action("FIZZL_EXPLAIN_APPROVAL");
+const DOCTOR = action("FIZZL_DIAGNOSE_X402");
 
 let fx;
 let sol;
@@ -22,6 +23,7 @@ function runtimeWith(keys) {
   return fakeRuntime({
     ICHIMOKU_SIGNAL_URL: fx.ichimokuUrl,
     PLAINTEXT_URL: fx.plaintextUrl,
+    X402_DOCTOR_URL: fx.doctorUrl,
     SOLANA_RPC_URL: fx.rpc,
     ...keys,
   });
@@ -119,6 +121,26 @@ test("explain approval: parses the JSON payload and pays $0.05 on Base", async (
   assert.match(replies[0].text, /This approval: RISK/);
 });
 
+test("x402 doctor: pays $0.01 on Solana, passes url and method, lists failures before warnings with hints", async () => {
+  fx.state.payments.length = 0;
+  const { result, replies } = await run(
+    DOCTOR,
+    runtimeWith({ SVM_PRIVATE_KEY: sol.secret, EVM_PRIVATE_KEY: evm.secret }),
+    "Can you diagnose my x402 endpoint? It's a POST at https://api.example.com/paid?x=1."
+  );
+  assert.equal(result.success, true, result.error);
+  assert.deepEqual(fx.state.payments.map((p) => [p.network, p.valid, p.path]), [
+    [SOLANA, true, `/api/v1/diagnose?url=${encodeURIComponent("https://api.example.com/paid?x=1")}&method=POST`],
+  ]);
+  const lines = replies[0].text.split("\n");
+  assert.match(lines[0], /^⛔ https:\/\/api\.example\.com\/paid\?x=1 \(POST\): FAIL$/);
+  assert.equal(lines[1], "1 passed, 1 warnings, 1 failed");
+  assert.match(lines[2], /^⛔ accepts\[0\]: amount/);
+  assert.match(lines[3], /→ Use 10000/);
+  assert.match(lines[4], /^⚠️ Payment challenge/);
+  assert.equal(result.values.x402Overall, "fail");
+});
+
 test("no wallet configured: every action explains what to set", async () => {
   const { result } = await run(ICHIMOKU, runtimeWith({}), "ichimoku for SOL-USDT");
   assert.equal(result.success, false);
@@ -136,6 +158,9 @@ test("validate: only triggers on relevant messages that contain the needed input
   assert.equal(await v(CHECK, "check approvals"), false);
   assert.equal(await v(EXPLAIN, 'explain this approval {"spender":"0xabc","amount":"1"}'), true);
   assert.equal(await v(EXPLAIN, "explain this approval"), false);
+  assert.equal(await v(DOCTOR, "why is my x402 paywall broken? https://api.example.com/paid"), true);
+  assert.equal(await v(DOCTOR, "check https://example.com"), false);
+  assert.equal(await v(DOCTOR, "why is my x402 paywall broken?"), false);
 });
 
 test("provider lists the tools, prices and paying wallets", async () => {
