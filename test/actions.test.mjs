@@ -88,7 +88,7 @@ test("a rejected payment surfaces the facilitator's reason", async () => {
   }
 });
 
-test("wallet approvals: pays $0.10 on Base and returns the verdict", async () => {
+test("wallet approvals: pays $0.10 (Solana preferred when both wallets are set) and returns the verdict", async () => {
   fx.state.payments.length = 0;
   const { result, replies } = await run(
     CHECK,
@@ -96,17 +96,16 @@ test("wallet approvals: pays $0.10 on Base and returns the verdict", async () =>
     "Are the NFT approvals on 0x6B0F4651eD42893ab58139938175E4a69f175F25 safe on arbitrum?"
   );
   assert.equal(result.success, true, result.error);
-  assert.deepEqual(fx.state.payments.map((p) => [p.network, p.valid, p.path]), [[BASE, true, "/api/check-wallet"]]);
+  assert.deepEqual(fx.state.payments.map((p) => [p.network, p.valid, p.path]), [[SOLANA, true, "/api/check-wallet"]]);
   assert.match(replies[0].text, /0x6B0F…5F25 nft approvals on arbitrum: CAUTION/);
   assert.match(replies[0].text, /Unlimited USDC approval on arbitrum \(nft\)/);
 });
 
-test("wallet approvals without an EVM wallet: clear message, no request", async () => {
+test("wallet approvals with only a Solana wallet: pays on Solana", async () => {
   fx.state.payments.length = 0;
   const { result } = await run(CHECK, runtimeWith({ SVM_PRIVATE_KEY: sol.secret }), "check approvals on 0x6B0F4651eD42893ab58139938175E4a69f175F25");
-  assert.equal(result.success, false);
-  assert.match(result.error, /EVM_PRIVATE_KEY/);
-  assert.equal(fx.state.payments.length, 0);
+  assert.equal(result.success, true, result.error);
+  assert.deepEqual(fx.state.payments.map((p) => [p.network, p.valid, p.payer]), [[SOLANA, true, sol.address]]);
 });
 
 test("explain approval: parses the JSON payload and pays $0.05 on Base", async () => {
@@ -117,7 +116,7 @@ test("explain approval: parses the JSON payload and pays $0.05 on Base", async (
     'Is this approval safe? ```json\n{"spender":"0x1111111254eeb25477b68fb85ed929f73a960582","amount":"unlimited","token":"USDC"}\n```'
   );
   assert.equal(result.success, true, result.error);
-  assert.equal(fx.state.payments[0].path, "/api/explain");
+  assert.deepEqual(fx.state.payments.map((p) => [p.network, p.path]), [[BASE, "/api/explain"]]);
   assert.match(replies[0].text, /This approval: RISK/);
 });
 

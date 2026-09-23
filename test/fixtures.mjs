@@ -175,7 +175,7 @@ export async function startFixtures() {
       res.statusCode = 404;
       return res.end("{}");
     }
-    return paidRoute({ accepts: [baseOption(route.amount)], resourceUrl: (r) => `${plaintextUrl}${r.url}`, state, respond: route.respond })(req, res, body);
+    return paidRoute({ accepts: [baseOption(route.amount), solanaOption(route.amount)], resourceUrl: (r) => `${plaintextUrl}${r.url}`, state, respond: route.respond })(req, res, body);
   });
 
   let doctorUrl;

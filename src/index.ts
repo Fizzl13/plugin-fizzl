@@ -14,8 +14,8 @@ const servicesProvider: Provider = {
     const text = [
       "Paid tools (x402, USDC):",
       "- FIZZL_ICHIMOKU_SIGNAL: Ichimoku Cloud signal for a crypto pair, $0.02 (Solana or Base)",
-      "- FIZZL_CHECK_WALLET_APPROVALS: risk of an EVM wallet's token/NFT approvals, $0.10 (Base)",
-      "- FIZZL_EXPLAIN_APPROVAL: plain-language verdict on an approval JSON, $0.05 (Base)",
+      "- FIZZL_CHECK_WALLET_APPROVALS: risk of an EVM wallet's token/NFT approvals, $0.10 (Solana or Base)",
+      "- FIZZL_EXPLAIN_APPROVAL: plain-language verdict on an approval JSON, $0.05 (Solana or Base)",
       "- FIZZL_DIAGNOSE_X402: diagnose why an x402 paid endpoint fails, with fix hints, $0.01 (Solana or Base)",
       wallets.length ? `Paying wallets: ${wallets.join(", ")}` : "No paying wallet configured; these tools will fail until SVM_PRIVATE_KEY or EVM_PRIVATE_KEY is set.",
     ].join("\n");
@@ -26,7 +26,7 @@ const servicesProvider: Provider = {
 export const fizzlPlugin: Plugin = {
   name: "fizzl",
   description:
-    "Fizzl's x402 agent services: Ichimoku Cloud trading signals (Solana/Base), PlainText wallet-approval risk checks (Base) and x402 Doctor endpoint diagnosis (Solana/Base), paid per call in USDC.",
+    "Fizzl's x402 agent services: Ichimoku Cloud trading signals (Solana/Base), PlainText wallet-approval risk checks (Solana/Base) and x402 Doctor endpoint diagnosis (Solana/Base), paid per call in USDC.",
   actions: [ichimokuSignalAction, checkWalletApprovalsAction, explainApprovalAction, diagnoseX402Action],
   providers: [servicesProvider],
   init: async (_config, runtime) => {
