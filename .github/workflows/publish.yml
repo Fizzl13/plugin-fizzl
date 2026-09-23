@@ -1,9 +1,11 @@
 name: Publish to npm
 
-# Push a tag like v0.1.0 (matching package.json "version") to publish.
+# Push a tag like v0.1.0 (matching package.json "version") to publish,
+# or run it by hand from the Actions tab to publish the current version on main.
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 jobs:
   publish:
@@ -19,6 +21,7 @@ jobs:
           cache: npm
           registry-url: https://registry.npmjs.org
       - name: Tag matches package version
+        if: github.ref_type == 'tag'
         run: |
           version="v$(node -p 'require("./package.json").version')"
           if [ "$version" != "$GITHUB_REF_NAME" ]; then

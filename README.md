@@ -71,6 +71,6 @@ preference, the spend cap, rejected payments, missing wallets, message parsing a
 Publishing runs in GitHub Actions (`.github/workflows/publish.yml`) and needs an `NPM_TOKEN` repository secret: an npm granular access token with read and write access to packages.
 
 1. Bump `version` in `package.json` and merge to `main`.
-2. Tag that commit and push the tag: `git tag v0.1.1 && git push origin v0.1.1`.
+2. Tag that commit and push the tag (`git tag v0.1.1 && git push origin v0.1.1`), or run "Publish to npm" from the Actions tab on `main`.
 
 The workflow checks that the tag matches the version, runs the tests and publishes.
