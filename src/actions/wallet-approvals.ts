@@ -14,7 +14,7 @@ export const checkWalletApprovalsAction: Action = {
   name: "FIZZL_CHECK_WALLET_APPROVALS",
   similes: ["CHECK_WALLET_APPROVALS", "WALLET_APPROVAL_CHECK", "REVOKE_CHECK", "CHECK_ALLOWANCES"],
   description:
-    "Check an EVM wallet's live token or NFT approvals (allowances) and explain in plain language whether they are SAFE, CAUTION or RISK. Chains: ethereum, bsc, polygon, arbitrum, optimism, base, avalanche. Paid per call via x402: $0.10 USDC on Base. Parameters: address (0x…), chain, kind (token|nft).",
+    "Check an EVM wallet's live token or NFT approvals (allowances) and explain in plain language whether they are SAFE, CAUTION or RISK. Chains: ethereum, bsc, polygon, arbitrum, optimism, base, avalanche. Paid per call via x402: $0.10 USDC on Solana or Base. Parameters: address (0x…), chain, kind (token|nft).",
   validate: async (_runtime, message) => {
     const text = message.content?.text ?? "";
     return /\b(approv\w*|allowance\w*|revoke\w*|permissions?|safe|risky?|drain\w*)\b/i.test(text) && parseWalletInput(text) !== null;
@@ -24,9 +24,6 @@ export const checkWalletApprovalsAction: Action = {
     if (!input) return failure(callback, "Send the EVM wallet address (0x…) to check.");
 
     const { client, urls } = await getContext(runtime);
-    if (!client.wallets.base && client.canPay) {
-      return failure(callback, "PlainText charges on Base. Set EVM_PRIVATE_KEY for a wallet holding USDC on Base.");
-    }
     const result = await checkWalletApprovals(client, urls, input);
     if (!result.ok || !result.data) return failure(callback, `Could not check ${input.address}: ${result.error}`);
 
@@ -52,7 +49,7 @@ export const explainApprovalAction: Action = {
   name: "FIZZL_EXPLAIN_APPROVAL",
   similes: ["EXPLAIN_APPROVAL", "EXPLAIN_PERMISSION", "EXPLAIN_SIGNATURE_REQUEST"],
   description:
-    "Explain a pasted approval/permission JSON payload (from a dapp prompt, scanner or signature request) in plain language with a SAFE/CAUTION/RISK verdict, without an on-chain lookup. Paid per call via x402: $0.05 USDC on Base. Parameter: data (the JSON object).",
+    "Explain a pasted approval/permission JSON payload (from a dapp prompt, scanner or signature request) in plain language with a SAFE/CAUTION/RISK verdict, without an on-chain lookup. Paid per call via x402: $0.05 USDC on Solana or Base. Parameter: data (the JSON object).",
   validate: async (_runtime, message) => {
     const text = message.content?.text ?? "";
     return /\b(explain|what does|is this|safe|risky?)\b/i.test(text) && /\b(approv\w*|permit\w*|permission|allowance|signature|spender)\b/i.test(text) && parseApprovalPayload(text) !== null;
@@ -62,9 +59,6 @@ export const explainApprovalAction: Action = {
     if (!data) return failure(callback, "Paste the approval or permission JSON you want explained.");
 
     const { client, urls } = await getContext(runtime);
-    if (!client.wallets.base && client.canPay) {
-      return failure(callback, "PlainText charges on Base. Set EVM_PRIVATE_KEY for a wallet holding USDC on Base.");
-    }
     const result = await explainApproval(client, urls, data);
     if (!result.ok || !result.data) return failure(callback, `Could not explain that payload: ${result.error}`);
 
