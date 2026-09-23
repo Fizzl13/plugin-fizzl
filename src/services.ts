@@ -1,7 +1,7 @@
 // Typed calls to each paid endpoint.
 
 import type { FizzlClient, PaidResult } from "./client.js";
-import type { DiagnoseInput, EvmChain, SignalInput, WalletInput } from "./parse.js";
+import type { DiagnoseInput, EvmChain, PreflightInput, SignalInput, WalletInput } from "./parse.js";
 
 export interface IchimokuSignal {
   pair: string;
@@ -36,6 +36,29 @@ export interface Diagnosis {
   method: "GET" | "POST" | null;
   overall: "pass" | "warn" | "fail";
   checks: DiagnosisCheck[];
+}
+
+export interface PreflightOption {
+  index: number;
+  network: string | null;
+  network_name: string | null;
+  asset_symbol: string | null;
+  amount: string | null;
+  usd: number | null;
+  pay_to: string | null;
+  payable: boolean;
+  problems: string[];
+}
+
+export interface Preflight {
+  url: string;
+  verdict: "go" | "caution" | "no_go";
+  safe_to_pay: boolean;
+  summary: string;
+  recommended_option: number | null;
+  options: PreflightOption[];
+  reasons: Array<{ level: "no_go" | "caution" | "info"; code: string; message: string }>;
+  cached?: boolean;
 }
 
 export interface ServiceUrls {
@@ -76,4 +99,12 @@ export function explainApproval(client: FizzlClient, urls: ServiceUrls, data: Re
 export function diagnoseX402(client: FizzlClient, urls: ServiceUrls, input: DiagnoseInput): Promise<PaidResult<Diagnosis>> {
   const query = new URLSearchParams({ url: input.url, ...(input.method ? { method: input.method } : {}) });
   return client.request<Diagnosis>(`${trim(urls.doctor)}/api/v1/diagnose?${query}`);
+}
+
+export function preflightX402(client: FizzlClient, urls: ServiceUrls, input: PreflightInput): Promise<PaidResult<Preflight>> {
+  const query = new URLSearchParams({ url: input.url });
+  if (input.method) query.set("method", input.method);
+  if (input.maxUsd !== undefined) query.set("max_usd", String(input.maxUsd));
+  if (input.network) query.set("network", input.network);
+  return client.request<Preflight>(`${trim(urls.doctor)}/api/v1/preflight?${query}`);
 }

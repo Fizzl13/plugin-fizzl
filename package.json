@@ -1,7 +1,7 @@
 {
   "name": "plugin-fizzl",
-  "version": "0.2.1",
-  "description": "ElizaOS plugin for Fizzl's x402 agent services: Ichimoku Cloud trading signals (Solana/Base), PlainText wallet-approval risk checks (Solana/Base) and x402 Doctor endpoint diagnosis (Solana/Base). Pays per call in USDC.",
+  "version": "0.3.0",
+  "description": "ElizaOS plugin for Fizzl's x402 agent services: Ichimoku Cloud trading signals, PlainText wallet-approval risk checks, and x402 Doctor pre-payment checks and endpoint diagnosis. Pays per call in USDC on Solana or Base.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -89,7 +89,8 @@
     "ichimoku",
     "wallet-security",
     "approvals",
-    "diagnostics"
+    "diagnostics",
+    "safety"
   ],
   "license": "MIT"
 }

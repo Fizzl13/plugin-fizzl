@@ -117,3 +117,29 @@ export function parseDiagnoseInput(text: string, options: Record<string, unknown
   const method = opt === "GET" || opt === "POST" ? opt : /\bPOST\b/.test(text) ? "POST" : undefined;
   return method ? { url: url.href, method } : { url: url.href };
 }
+
+export interface PreflightInput { url: string; method?: "GET" | "POST"; maxUsd?: number; network?: string }
+
+const NETWORK_WORDS: Array<[RegExp, string]> = [
+  [/\bsolana\b/i, "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"],
+  [/\bbase\b/i, "eip155:8453"],
+];
+
+// "is it safe to pay https://x.y/paid, max $0.05 on solana?" →
+// { url, maxUsd: 0.05, network: "solana:5eykt…" }. The budget is the first
+// dollar amount (or one after "max"/"budget"/"up to"); the network is named.
+export function parsePreflightInput(text: string, options: Record<string, unknown> = {}): PreflightInput | null {
+  const base = parseDiagnoseInput(text, options);
+  if (!base) return null;
+  const input: PreflightInput = { ...base };
+  const withoutUrl = text.replace(/\bhttps?:\/\/[^\s<>"'`)\]]+/gi, " ");
+  const optMax = options.max_usd ?? options.maxUsd;
+  const budget = optMax !== undefined
+    ? Number(optMax)
+    : Number((/(?:max(?:imum)?|budget|up to|at most|no more than)\s*(?:of\s*)?\$?\s*(\d+(?:\.\d+)?)/i.exec(withoutUrl) ?? /\$\s*(\d+(?:\.\d+)?)/.exec(withoutUrl))?.[1]);
+  if (Number.isFinite(budget) && budget > 0) input.maxUsd = budget;
+  const optNetwork = typeof options.network === "string" ? options.network : undefined;
+  const network = optNetwork ?? NETWORK_WORDS.find(([re]) => re.test(withoutUrl))?.[1];
+  if (network) input.network = network;
+  return input;
+}

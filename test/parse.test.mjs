@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseSignalInput, parseWalletInput, parseApprovalPayload, parseDiagnoseInput } from "../dist/parse.js";
+import { parseSignalInput, parseWalletInput, parseApprovalPayload, parseDiagnoseInput, parsePreflightInput } from "../dist/parse.js";
 
 test("parseSignalInput: pairs, bare tickers and intervals", () => {
   const cases = [
@@ -37,4 +37,12 @@ test("parseDiagnoseInput: first http(s) URL, trailing punctuation dropped, POST 
   assert.deepEqual(parseDiagnoseInput("anything", { url: "http://h.io/p", method: "get" }), { url: "http://h.io/p", method: "GET" });
   assert.equal(parseDiagnoseInput("no url here"), null);
   assert.equal(parseDiagnoseInput("x", { url: "ftp://h.io" }), null);
+});
+
+test("parsePreflightInput: budget, network words, options win, URL digits ignored", () => {
+  assert.deepEqual(parsePreflightInput("safe to pay https://a.b/x/0.5? max $0.05 on base"), { url: "https://a.b/x/0.5", maxUsd: 0.05, network: "eip155:8453" });
+  assert.deepEqual(parsePreflightInput("pay https://a.b/x for $0.02 on solana"), { url: "https://a.b/x", maxUsd: 0.02, network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp" });
+  assert.deepEqual(parsePreflightInput("x", { url: "https://a.b/y", max_usd: "0.1", network: "eip155:137", method: "post" }), { url: "https://a.b/y", method: "POST", maxUsd: 0.1, network: "eip155:137" });
+  assert.deepEqual(parsePreflightInput("preflight https://a.b/z"), { url: "https://a.b/z" });
+  assert.equal(parsePreflightInput("no url"), null);
 });
