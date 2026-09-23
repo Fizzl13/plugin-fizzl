@@ -99,3 +99,21 @@ export function parseApprovalPayload(text: string, options: Record<string, unkno
   }
   return null;
 }
+
+export interface DiagnoseInput { url: string; method?: "GET" | "POST" }
+
+// The first public http(s) URL in the message; POST only when asked for.
+export function parseDiagnoseInput(text: string, options: Record<string, unknown> = {}): DiagnoseInput | null {
+  const raw = typeof options.url === "string" ? options.url : /\bhttps?:\/\/[^\s<>"'`)\]]+/i.exec(text)?.[0];
+  if (!raw) return null;
+  let url: URL;
+  try {
+    url = new URL(raw.replace(/[.,;:!?]+$/, ""));
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+  const opt = typeof options.method === "string" ? options.method.toUpperCase() : undefined;
+  const method = opt === "GET" || opt === "POST" ? opt : /\bPOST\b/.test(text) ? "POST" : undefined;
+  return method ? { url: url.href, method } : { url: url.href };
+}
