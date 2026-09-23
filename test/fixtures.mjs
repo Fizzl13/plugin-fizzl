@@ -181,6 +181,31 @@ export async function startFixtures() {
   let doctorUrl;
   doctorUrl = await listen(async (req, res, body) => {
     const url = new URL(req.url, "http://x");
+    if (url.pathname === "/api/v1/preflight" && req.method === "GET") {
+      return paidRoute({
+        accepts: [baseOption("1000"), solanaOption("1000")],
+        resourceUrl: (r) => `${doctorUrl}${r.url}`,
+        state,
+        respond: () => {
+          const maxUsd = url.searchParams.get("max_usd");
+          const overBudget = maxUsd !== null && Number(maxUsd) < 0.02;
+          return {
+            url: url.searchParams.get("url"),
+            verdict: overBudget ? "no_go" : "go",
+            safe_to_pay: !overBudget,
+            summary: overBudget ? `Do not pay: The cheapest payable option costs $0.02, above your max_usd of $${maxUsd}.` : "OK to pay: $0.02 on Solana.",
+            recommended_option: 1,
+            options: [
+              { index: 0, network: BASE, network_name: "Base", asset_symbol: "USDC", amount: "20000", usd: 0.02, pay_to: "0xabc", payable: true, problems: [] },
+              { index: 1, network: SOLANA, network_name: "Solana", asset_symbol: "USDC", amount: "20000", usd: 0.02, pay_to: "SoLPayTo", payable: true, problems: [] },
+              { index: 2, network: "eip155:137", network_name: "Polygon", asset_symbol: "USDC", amount: "20000", usd: 0.02, pay_to: "0xdef", payable: false, problems: ["accepts[2]: extra.name/extra.version is missing"] },
+            ],
+            reasons: overBudget ? [{ level: "no_go", code: "over_budget", message: `The cheapest payable option costs $0.02, above your max_usd of $${maxUsd}.` }] : [{ level: "info", code: "not_in_bazaar", message: "not listed" }],
+            cached: false,
+          };
+        },
+      })(req, res, body);
+    }
     if (url.pathname !== "/api/v1/diagnose" || req.method !== "GET") {
       res.statusCode = 404;
       return res.end("{}");

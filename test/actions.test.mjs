@@ -8,6 +8,7 @@ const ICHIMOKU = action("FIZZL_ICHIMOKU_SIGNAL");
 const CHECK = action("FIZZL_CHECK_WALLET_APPROVALS");
 const EXPLAIN = action("FIZZL_EXPLAIN_APPROVAL");
 const DOCTOR = action("FIZZL_DIAGNOSE_X402");
+const PREFLIGHT = action("FIZZL_PREFLIGHT_X402");
 
 let fx;
 let sol;
@@ -140,6 +141,36 @@ test("x402 doctor: pays $0.01 on Solana, passes url and method, lists failures b
   assert.equal(result.values.x402Overall, "fail");
 });
 
+test("preflight: pays $0.001 on Solana, passes url, budget and network, replies with the verdict", async () => {
+  fx.state.payments.length = 0;
+  const { result, replies } = await run(
+    PREFLIGHT,
+    runtimeWith({ SVM_PRIVATE_KEY: sol.secret, EVM_PRIVATE_KEY: evm.secret }),
+    "Is it safe to pay https://api.example.com/paid/1? Max $0.05 on solana."
+  );
+  assert.equal(result.success, true, result.error);
+  const query = new URLSearchParams({ url: "https://api.example.com/paid/1", max_usd: "0.05", network: SOLANA });
+  assert.deepEqual(fx.state.payments.map((p) => [p.network, p.valid, p.path]), [[SOLANA, true, `/api/v1/preflight?${query}`]]);
+  const lines = replies[0].text.split("\n");
+  assert.equal(lines[0], "✅ GO https://api.example.com/paid/1");
+  assert.equal(lines[1], "OK to pay: $0.02 on Solana.");
+  assert.equal(lines[2], "Recommended: $0.02 USDC on Solana → SoLPayTo");
+  assert.match(replies[0].text, /option 2 \(Polygon\): accepts\[2\]: extra\.name/);
+  assert.doesNotMatch(replies[0].text, /not listed/, "info reasons stay out of the reply");
+  assert.equal(result.values.x402Verdict, "go");
+  assert.equal(result.values.x402SafeToPay, true);
+});
+
+test("preflight: over budget is NO-GO without a recommendation line", async () => {
+  fx.state.payments.length = 0;
+  const { result, replies } = await run(PREFLIGHT, runtimeWith({ EVM_PRIVATE_KEY: evm.secret }), "should I pay https://api.example.com/paid/1 with a budget of $0.01");
+  assert.equal(result.success, true, result.error);
+  assert.equal(fx.state.payments[0].network, BASE);
+  assert.match(replies[0].text, /^⛔ NO-GO /);
+  assert.doesNotMatch(replies[0].text, /Recommended:/);
+  assert.equal(result.values.x402SafeToPay, false);
+});
+
 test("no wallet configured: every action explains what to set", async () => {
   const { result } = await run(ICHIMOKU, runtimeWith({}), "ichimoku for SOL-USDT");
   assert.equal(result.success, false);
@@ -160,6 +191,10 @@ test("validate: only triggers on relevant messages that contain the needed input
   assert.equal(await v(DOCTOR, "why is my x402 paywall broken? https://api.example.com/paid"), true);
   assert.equal(await v(DOCTOR, "check https://example.com"), false);
   assert.equal(await v(DOCTOR, "why is my x402 paywall broken?"), false);
+  assert.equal(await v(PREFLIGHT, "is it safe to pay https://api.example.com/paid"), true);
+  assert.equal(await v(PREFLIGHT, "check before paying https://api.example.com/paid"), true);
+  assert.equal(await v(PREFLIGHT, "is it safe to pay?"), false);
+  assert.equal(await v(DOCTOR, "check if this x402 endpoint is safe to pay https://api.example.com/paid"), false, "buyer intent goes to preflight, not diagnose");
 });
 
 test("provider lists the tools, prices and paying wallets", async () => {
