@@ -65,3 +65,12 @@ npm test          # builds, then runs the tests
 The tests pay fixture x402 services that behave like the live ones and verify every payment the way a facilitator
 does: the payer's Ed25519 signature on the Solana transaction and the EIP-3009 signature on Base. They cover network
 preference, the spend cap, rejected payments, missing wallets, message parsing and `validate`.
+
+## Releasing
+
+Publishing runs in GitHub Actions (`.github/workflows/publish.yml`) and needs an `NPM_TOKEN` repository secret: an npm granular access token with read and write access to packages.
+
+1. Bump `version` in `package.json` and merge to `main`.
+2. Tag that commit and push the tag: `git tag v0.1.1 && git push origin v0.1.1`.
+
+The workflow checks that the tag matches the version, runs the tests and publishes.
