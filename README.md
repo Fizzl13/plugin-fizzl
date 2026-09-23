@@ -1,5 +1,7 @@
 # plugin-fizzl
 
+![plugin-fizzl](images/banner.jpg)
+
 ElizaOS plugin for Fizzl's x402 agent services. Your agent pays per call in USDC — no API keys, no accounts.
 
 | Action | Service | What it does | Price | Pays on |
