@@ -2,6 +2,7 @@ import type { Plugin, Provider } from "@elizaos/core";
 import { ichimokuSignalAction } from "./actions/ichimoku-signal.js";
 import { checkWalletApprovalsAction, explainApprovalAction } from "./actions/wallet-approvals.js";
 import { diagnoseX402Action, preflightX402Action } from "./actions/x402-doctor.js";
+import { presignCheckAction } from "./actions/presign-guard.js";
 import { getContext } from "./context.js";
 
 // Tells the agent which paid tools it has and whether it can pay for them.
@@ -18,6 +19,7 @@ const servicesProvider: Provider = {
       "- FIZZL_EXPLAIN_APPROVAL: plain-language verdict on an approval JSON, $0.05 (Solana or Base)",
       "- FIZZL_PREFLIGHT_X402: before paying an unknown x402 endpoint, GO/CAUTION/NO-GO with the recommended option, $0.001 (Solana or Base)",
       "- FIZZL_DIAGNOSE_X402: diagnose why an x402 paid endpoint fails, with fix hints, $0.01 (Solana or Base)",
+      "- FIZZL_PRESIGN_CHECK: before signing a transaction, approval or EIP-712 signature, GREEN/ORANGE/RED with reasons, $0.01 (Base)",
       wallets.length ? `Paying wallets: ${wallets.join(", ")}` : "No paying wallet configured; these tools will fail until SVM_PRIVATE_KEY or EVM_PRIVATE_KEY is set.",
     ].join("\n");
     return { text, values: { fizzlCanPay: client.canPay, fizzlWallets: wallets.join(", ") } };
@@ -27,8 +29,8 @@ const servicesProvider: Provider = {
 export const fizzlPlugin: Plugin = {
   name: "fizzl",
   description:
-    "Fizzl's x402 agent services: Ichimoku Cloud trading signals (Solana/Base), PlainText wallet-approval risk checks (Solana/Base) and x402 Doctor pre-payment checks and endpoint diagnosis (Solana/Base), paid per call in USDC.",
-  actions: [ichimokuSignalAction, checkWalletApprovalsAction, explainApprovalAction, preflightX402Action, diagnoseX402Action],
+    "Fizzl's x402 agent services: Ichimoku Cloud trading signals (Solana/Base), PlainText wallet-approval risk checks (Solana/Base), x402 Doctor pre-payment checks and endpoint diagnosis (Solana/Base) and presign-guard checks before signing (Base), paid per call in USDC.",
+  actions: [ichimokuSignalAction, checkWalletApprovalsAction, explainApprovalAction, preflightX402Action, diagnoseX402Action, presignCheckAction],
   providers: [servicesProvider],
   init: async (_config, runtime) => {
     const { client } = await getContext(runtime);
@@ -41,7 +43,8 @@ export const fizzlPlugin: Plugin = {
 };
 
 export default fizzlPlugin;
-export { ichimokuSignalAction, checkWalletApprovalsAction, explainApprovalAction, preflightX402Action, diagnoseX402Action };
+export { ichimokuSignalAction, checkWalletApprovalsAction, explainApprovalAction, preflightX402Action, diagnoseX402Action, presignCheckAction };
 export { FizzlClient } from "./client.js";
-export { parseSignalInput, parseWalletInput, parseApprovalPayload, parseDiagnoseInput, parsePreflightInput } from "./parse.js";
-export { preflightX402 } from "./services.js";
+export { parseSignalInput, parseWalletInput, parseApprovalPayload, parseDiagnoseInput, parsePreflightInput, parsePresignInput } from "./parse.js";
+export { preflightX402, presignCheck } from "./services.js";
+export type { PresignVerdict, PresignReason } from "./services.js";

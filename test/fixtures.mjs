@@ -228,7 +228,34 @@ export async function startFixtures() {
     })(req, res, body);
   });
 
-  return { state, rpc, ichimokuUrl, plaintextUrl, doctorUrl, ichimokuPrice };
+  // presign-guard: Base only, like the live service. Remembers the last request body.
+  let presignUrl;
+  presignUrl = await listen(async (req, res, body) => {
+    const prices = { "/v1/check": "10000", "/v1/check/explain": "30000" };
+    if (!prices[req.url] || req.method !== "POST") {
+      res.statusCode = 404;
+      return res.end("{}");
+    }
+    return paidRoute({
+      accepts: [baseOption(prices[req.url])],
+      resourceUrl: (r) => `${presignUrl}${r.url}`,
+      state,
+      respond: (_r, input) => {
+        state.lastPresign = { path: req.url, input };
+        const red = input.typedData?.primaryType === "Permit";
+        return {
+          version: "2",
+          verdict: red ? "red" : "green",
+          reasons: red
+            ? [{ code: "OFFCHAIN_SIGNATURE", severity: "info", subject: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913" }, { code: "SIGNATURE_GRANT_TO_EOA", severity: "red", subject: "0xbad0000000000000000000000000000000000001" }]
+            : [{ code: "PAYMENT_AUTHORIZATION", severity: "info", subject: "0x6b0f4651ed42893ab58139938175e4a69f175f25" }],
+          ...(req.url.endsWith("/explain") ? { explanation: { lang: input.lang, text: "Tekenen geeft deze wallet toegang tot je tokens." } } : {}),
+        };
+      },
+    })(req, res, body);
+  });
+
+  return { state, rpc, ichimokuUrl, plaintextUrl, doctorUrl, presignUrl, ichimokuPrice };
 }
 
 // Minimal stand-in for an ElizaOS IAgentRuntime: settings only.

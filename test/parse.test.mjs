@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseSignalInput, parseWalletInput, parseApprovalPayload, parseDiagnoseInput, parsePreflightInput } from "../dist/parse.js";
+import { parseSignalInput, parseWalletInput, parseApprovalPayload, parseDiagnoseInput, parsePreflightInput, parsePresignInput } from "../dist/parse.js";
 
 test("parseSignalInput: pairs, bare tickers and intervals", () => {
   const cases = [
@@ -45,4 +45,17 @@ test("parsePreflightInput: budget, network words, options win, URL digits ignore
   assert.deepEqual(parsePreflightInput("x", { url: "https://a.b/y", max_usd: "0.1", network: "eip155:137", method: "post" }), { url: "https://a.b/y", method: "POST", maxUsd: 0.1, network: "eip155:137" });
   assert.deepEqual(parsePreflightInput("preflight https://a.b/z"), { url: "https://a.b/z" });
   assert.equal(parsePreflightInput("no url"), null);
+});
+
+test("parsePresignInput: ready requests, typed data, transactions, chain and explain", () => {
+  const td = { primaryType: "Permit", domain: { chainId: "0x1", verifyingContract: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" }, message: { spender: "0xabc" } };
+  assert.deepEqual(parsePresignInput(`sign? ${JSON.stringify(td)}`), { request: { type: "signature", chainId: 1, typedData: td }, explain: false, lang: "en" });
+  const ready = { type: "approval", token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", spender: "0x000000000022D473030F116dDEE9F6B43aC78BA3", amount: "1" };
+  assert.deepEqual(parsePresignInput(`check on arbitrum ${JSON.stringify(ready)}`).request, { ...ready, chainId: 42161 });
+  const tx = { to: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", data: "0x095ea7b3" };
+  assert.deepEqual(parsePresignInput(`tx ${JSON.stringify(tx)}`).request, { type: "transaction", chainId: 8453, to: tx.to, data: tx.data });
+  assert.equal(parsePresignInput(`explain the risk in Dutch: ${JSON.stringify(td)}`).explain, true);
+  assert.equal(parsePresignInput(`explain the risk in Dutch: ${JSON.stringify(td)}`).lang, "nl");
+  assert.equal(parsePresignInput('{"spender":"0xabc","amount":"unlimited"}'), null);
+  assert.equal(parsePresignInput("no json here"), null);
 });

@@ -9,6 +9,12 @@ const CHECK = action("FIZZL_CHECK_WALLET_APPROVALS");
 const EXPLAIN = action("FIZZL_EXPLAIN_APPROVAL");
 const DOCTOR = action("FIZZL_DIAGNOSE_X402");
 const PREFLIGHT = action("FIZZL_PREFLIGHT_X402");
+const PRESIGN = action("FIZZL_PRESIGN_CHECK");
+const PERMIT = JSON.stringify({
+  primaryType: "Permit",
+  domain: { name: "USD Coin", version: "2", chainId: 8453, verifyingContract: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" },
+  message: { owner: "0x1111111111111111111111111111111111111111", spender: "0xbad0000000000000000000000000000000000001", value: "1000000000", nonce: 0, deadline: "9999999999" },
+});
 
 let fx;
 let sol;
@@ -25,6 +31,7 @@ function runtimeWith(keys) {
     ICHIMOKU_SIGNAL_URL: fx.ichimokuUrl,
     PLAINTEXT_URL: fx.plaintextUrl,
     X402_DOCTOR_URL: fx.doctorUrl,
+    PRESIGN_GUARD_URL: fx.presignUrl,
     SOLANA_RPC_URL: fx.rpc,
     ...keys,
   });
@@ -171,6 +178,45 @@ test("preflight: over budget is NO-GO without a recommendation line", async () =
   assert.equal(result.values.x402SafeToPay, false);
 });
 
+test("presign: pasted typed data is wrapped as a signature request, paid $0.01 on Base (even with a Solana wallet too), red first", async () => {
+  fx.state.payments.length = 0;
+  const { result, replies } = await run(PRESIGN, runtimeWith({ SVM_PRIVATE_KEY: sol.secret, EVM_PRIVATE_KEY: evm.secret }), `Is it safe to sign this? ${PERMIT}`);
+  assert.equal(result.success, true, result.error);
+  assert.deepEqual(fx.state.payments.map((p) => [p.network, p.valid, p.payer, p.path]), [[BASE, true, evm.address, "/v1/check"]]);
+  assert.equal(fx.state.lastPresign.input.type, "signature");
+  assert.equal(fx.state.lastPresign.input.chainId, 8453);
+  assert.equal(fx.state.lastPresign.input.typedData.primaryType, "Permit");
+  assert.match(replies[0].text, /^🔴 RED: do not sign\.\n· red: SIGNATURE_GRANT_TO_EOA \(0xbad0…0001\)\n· info: OFFCHAIN_SIGNATURE/);
+  assert.equal(result.values.presignVerdict, "red");
+  assert.equal(result.values.safeToSign, false);
+});
+
+test("presign: 'explain in Dutch' uses /v1/check/explain ($0.03) with lang nl", async () => {
+  fx.state.payments.length = 0;
+  const { result, replies } = await run(PRESIGN, runtimeWith({ EVM_PRIVATE_KEY: evm.secret }), `Should I sign this? Explain in Dutch. ${PERMIT}`);
+  assert.equal(result.success, true, result.error);
+  assert.equal(fx.state.lastPresign.path, "/v1/check/explain");
+  assert.equal(fx.state.lastPresign.input.lang, "nl");
+  assert.match(replies[0].text, /Tekenen geeft deze wallet toegang/);
+});
+
+test("presign: a transaction from handler options, green is safe to sign", async () => {
+  const { result } = await run(PRESIGN, runtimeWith({ EVM_PRIVATE_KEY: evm.secret }), "check this before I sign", {
+    transaction: { to: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", data: "0x", value: 0, chainId: "0x2105" },
+  });
+  assert.equal(result.success, true, result.error);
+  assert.deepEqual(fx.state.lastPresign.input, { type: "transaction", chainId: 8453, to: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", data: "0x", value: "0" });
+  assert.equal(result.values.safeToSign, true);
+});
+
+test("presign: only a Solana wallet refuses before paying, and says what to set", async () => {
+  fx.state.payments.length = 0;
+  const { result } = await run(PRESIGN, runtimeWith({ SVM_PRIVATE_KEY: sol.secret }), `Is it safe to sign this? ${PERMIT}`);
+  assert.equal(result.success, false);
+  assert.match(result.error, /Base only.*EVM_PRIVATE_KEY/);
+  assert.equal(fx.state.payments.length, 0);
+});
+
 test("no wallet configured: every action explains what to set", async () => {
   const { result } = await run(ICHIMOKU, runtimeWith({}), "ichimoku for SOL-USDT");
   assert.equal(result.success, false);
@@ -195,12 +241,17 @@ test("validate: only triggers on relevant messages that contain the needed input
   assert.equal(await v(PREFLIGHT, "check before paying https://api.example.com/paid"), true);
   assert.equal(await v(PREFLIGHT, "is it safe to pay?"), false);
   assert.equal(await v(DOCTOR, "check if this x402 endpoint is safe to pay https://api.example.com/paid"), false, "buyer intent goes to preflight, not diagnose");
+  assert.equal(await v(PRESIGN, `is it safe to sign this? ${PERMIT}`), true);
+  assert.equal(await v(PRESIGN, 'check this tx {"to":"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913","data":"0x095ea7b3"}'), true);
+  assert.equal(await v(PRESIGN, "is it safe to sign this?"), false);
+  assert.equal(await v(PRESIGN, 'explain this approval {"spender":"0xabc","amount":"1"}'), false, "loose approval JSON stays with FIZZL_EXPLAIN_APPROVAL");
 });
 
 test("provider lists the tools, prices and paying wallets", async () => {
   const provider = plugin.providers.find((p) => p.name === "FIZZL_SERVICES");
   const out = await provider.get(runtimeWith({ SVM_PRIVATE_KEY: sol.secret }), message("hi"), {});
   assert.match(out.text, /FIZZL_ICHIMOKU_SIGNAL: .*\$0\.02/);
+  assert.match(out.text, /FIZZL_PRESIGN_CHECK: .*\$0\.01 \(Base\)/);
   assert.match(out.text, new RegExp(`Solana ${sol.address}`));
   assert.equal(out.values.fizzlCanPay, true);
 });
