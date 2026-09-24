@@ -18,7 +18,11 @@ const CHAIN_ALIASES: Record<string, EvmChain> = {
 };
 
 // Words that look like tickers but are not.
-const NOT_TICKERS = new Set(["THE", "FOR", "AND", "ON", "IN", "OF", "IS", "WHAT", "GET", "SHOW", "ME", "A", "AN", "CLOUD", "SIGNAL", "ICHIMOKU", "CHART", "PRICE", "TREND", "NOW", "TODAY", "PAIR", "CHECK", "GIVE", "HOW", "LOOKS", "LOOK", "BULLISH", "BEARISH"]);
+const NOT_TICKERS = new Set([
+  "THE", "FOR", "AND", "ON", "IN", "OF", "IS", "WHAT", "GET", "SHOW", "ME", "A", "AN", "CLOUD", "SIGNAL", "ICHIMOKU", "CHART", "PRICE", "TREND", "NOW", "TODAY", "PAIR", "CHECK", "GIVE", "HOW", "LOOKS", "LOOK", "BULLISH", "BEARISH",
+  // Indicator and trading words, so "RSI for SOL" or "TP and SL on ETH" find the coin.
+  "RSI", "MACD", "EMA", "SMA", "ATR", "OBV", "BB", "TA", "FIB", "TP", "SL", "SIGNALS", "INDICATORS", "CONFLUENCE", "LEVELS", "SUPPORT", "RESISTANCE", "TARGET", "TARGETS", "STOP", "ENTRY", "LONG", "SHORT",
+]);
 
 export interface SignalInput { pair: string; interval: string }
 
