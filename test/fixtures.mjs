@@ -139,6 +139,44 @@ export async function startFixtures() {
   const ichimokuPrice = { amount: "20000" };
   ichimokuUrl = await listen(async (req, res, body) => {
     const url = new URL(req.url, "http://x");
+    const pairOf = () => decodeURIComponent(url.pathname.split("/")[2]).toUpperCase();
+    const intervalOf = () => url.searchParams.get("interval") || "1h";
+    if (url.pathname.startsWith("/signals/")) {
+      return paidRoute({
+        accepts: [baseOption("100000"), solanaOption("100000")],
+        resourceUrl: (r) => `${ichimokuUrl}${r.url}`,
+        state,
+        respond: () => ({
+          pair: pairOf(), interval: intervalOf(), timestamp: "2026-09-24T20:00:00.000Z", price: 3412,
+          signal: "bullish", confidence: "medium", score: 0.5, votes: { bullish: 4, bearish: 1, neutral: 1, counted: 6 },
+          summary: "4 of 6 indicators bullish",
+          indicators: {
+            ichimoku: { cloud_position: "above_cloud", tenkan_kijun_cross: "bullish_cross", vote: "bullish" },
+            rsi: { value: 61.2, zone: "normal", vote: "bullish" },
+            macd: { histogram: 12.5, cross: "none", vote: "bullish" },
+            ema_cross: { trend: "golden", recent_cross: "none", vote: "bullish" },
+            bollinger: { position: "lower_half", squeeze: false, vote: "bearish" },
+            volume: { obv_flow: 0.01, vote: "neutral" },
+          },
+        }),
+      })(req, res, body);
+    }
+    if (url.pathname.startsWith("/levels/")) {
+      const plan = (dir) => ({ entry: 84244, stop: dir > 0 ? 82643 : 85900, target_1: dir > 0 ? 85385 : 82891, target_2: dir > 0 ? 87223 : 81500, risk_reward_1: 0.71, risk_reward_2: 1.86, stop_basis: dir > 0 ? "below support 82891" : "above resistance 85385", obstacle_before_target: null });
+      return paidRoute({
+        accepts: [baseOption("50000"), solanaOption("50000")],
+        resourceUrl: (r) => `${ichimokuUrl}${r.url}`,
+        state,
+        respond: () => ({
+          pair: pairOf(), interval: intervalOf(), timestamp: "2026-09-24T20:00:00.000Z", price: 84244, atr: 993, atr_percent: 1.18,
+          bias: "long", bias_from: "4 of 6 indicators bullish", confidence: "medium",
+          supports: [{ price: 83901, touches: 1 }, { price: 83470, touches: 2 }, { price: 82891, touches: 1 }],
+          resistances: [{ price: 84404, touches: 1 }, { price: 84979, touches: 3 }, { price: 85385, touches: 1 }],
+          plans: { long: plan(1), short: plan(-1) },
+          note: "Levels computed from price history, not trade advice or a prediction.",
+        }),
+      })(req, res, body);
+    }
     if (!url.pathname.startsWith("/signal/")) {
       res.statusCode = 404;
       return res.end("{}");

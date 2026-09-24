@@ -5,6 +5,8 @@ import { startFixtures, closeAll, fakeRuntime, message, newSolanaKey, newEvmKey,
 
 const action = (name) => plugin.actions.find((a) => a.name === name);
 const ICHIMOKU = action("FIZZL_ICHIMOKU_SIGNAL");
+const CONFLUENCE = action("FIZZL_CONFLUENCE_SIGNAL");
+const LEVELS = action("FIZZL_PRICE_LEVELS");
 const CHECK = action("FIZZL_CHECK_WALLET_APPROVALS");
 const EXPLAIN = action("FIZZL_EXPLAIN_APPROVAL");
 const DOCTOR = action("FIZZL_DIAGNOSE_X402");
@@ -254,4 +256,46 @@ test("provider lists the tools, prices and paying wallets", async () => {
   assert.match(out.text, /FIZZL_PRESIGN_CHECK: .*\$0\.01 \(Base\)/);
   assert.match(out.text, new RegExp(`Solana ${sol.address}`));
   assert.equal(out.values.fizzlCanPay, true);
+});
+
+test("Confluence: pays $0.10 on Solana and reports the six votes", async () => {
+  fx.state.payments.length = 0;
+  const { result, replies } = await run(CONFLUENCE, runtimeWith({ SVM_PRIVATE_KEY: sol.secret }), "What do RSI, MACD and the other indicators say for ETH/USDT on the 4h?");
+  assert.equal(result.success, true, result.error);
+  assert.deepEqual(fx.state.payments.map((p) => [p.network, p.valid, p.path]), [[SOLANA, true, "/signals/ETH-USDT?interval=4h"]]);
+  assert.match(replies[0].text, /^ETH-USDT 4h: BULLISH \(medium confidence\)/);
+  assert.match(replies[0].text, /4 of 6 indicators bullish\. Price 3,412 · RSI 61\.2 \(normal\)/);
+  assert.match(replies[0].text, /Bollinger: bearish · Volume: neutral/);
+  assert.equal(result.values.confluenceConfidence, "medium");
+});
+
+test("Price levels: pays $0.05 on Base and reports levels and the plan for the bias", async () => {
+  fx.state.payments.length = 0;
+  const { result, replies } = await run(LEVELS, runtimeWith({ EVM_PRIVATE_KEY: evm.secret }), "Where are support and resistance for BTC on the 4h?");
+  assert.equal(result.success, true, result.error);
+  assert.deepEqual(fx.state.payments.map((p) => [p.network, p.valid, p.path]), [[BASE, true, "/levels/BTC-USDT?interval=4h"]]);
+  assert.match(replies[0].text, /^BTC-USDT 4h: LONG bias/);
+  assert.match(replies[0].text, /Resistance: 84,404 · 84,979 · 85,385/);
+  assert.match(replies[0].text, /Long plan: entry 84,244 · stop 82,643 · targets 85,385 \/ 87,223/);
+  assert.match(replies[0].text, /not trade advice/);
+  assert.equal(result.values.levelsBias, "long");
+});
+
+test("Confluence and levels: triggers, and indicator words are not mistaken for the coin", async () => {
+  const v = (act, text) => act.validate(runtimeWith({}), message(text));
+  assert.equal(await v(CONFLUENCE, "RSI and MACD for SOL on the 1h"), true);
+  assert.equal(await v(CONFLUENCE, "what is RSI in general"), false, "no coin");
+  assert.equal(await v(LEVELS, "stop loss and take profit for $ETH"), true);
+  assert.equal(await v(LEVELS, "support for XRP-USDT"), true);
+  assert.equal(await v(LEVELS, "tell me a joke"), false);
+  const { parseSignalInput } = await import("../dist/index.js");
+  assert.deepEqual(parseSignalInput("RSI for SOL on the 4h"), { pair: "SOL-USDT", interval: "4h" });
+  assert.deepEqual(parseSignalInput("TP and SL on ETH"), { pair: "ETH-USDT", interval: "1h" });
+});
+
+test("services provider lists the new tools with their prices", async () => {
+  const { fizzlPlugin } = await import("../dist/index.js");
+  const out = await fizzlPlugin.providers[0].get(runtimeWith({}), message(""), {});
+  assert.match(out.text, /FIZZL_CONFLUENCE_SIGNAL: .*\$0\.10/);
+  assert.match(out.text, /FIZZL_PRICE_LEVELS: .*\$0\.05/);
 });

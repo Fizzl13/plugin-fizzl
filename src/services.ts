@@ -17,6 +17,55 @@ export interface IchimokuSignal {
   signal: "bullish" | "bearish" | "neutral";
 }
 
+export type Vote = "bullish" | "bearish" | "neutral" | null;
+
+export interface ConfluenceSignal {
+  pair: string;
+  interval: string;
+  timestamp: string;
+  price: number;
+  signal: "bullish" | "bearish" | "neutral";
+  confidence: "high" | "medium" | "low";
+  score: number;
+  votes: { bullish: number; bearish: number; neutral: number; counted: number };
+  summary: string;
+  indicators: {
+    ichimoku: { cloud_position?: string; tenkan_kijun_cross?: string; vote: Vote; reason?: string };
+    rsi: { value?: number; zone?: "overbought" | "oversold" | "normal"; vote: Vote; reason?: string };
+    macd: { histogram?: number; cross?: string; vote: Vote; reason?: string };
+    ema_cross: { trend?: "golden" | "death" | "flat"; recent_cross?: string; vote: Vote; reason?: string };
+    bollinger: { position?: string; squeeze?: boolean; vote: Vote; reason?: string };
+    volume: { obv_flow?: number; vote: Vote; reason?: string };
+  };
+}
+
+export interface PricePlan {
+  entry: number;
+  stop: number;
+  target_1: number;
+  target_2: number;
+  risk_reward_1: number;
+  risk_reward_2: number;
+  stop_basis: string;
+  obstacle_before_target: number | null;
+}
+
+export interface PriceLevels {
+  pair: string;
+  interval: string;
+  timestamp: string;
+  price: number;
+  atr: number;
+  atr_percent: number;
+  bias: "long" | "short" | "none";
+  bias_from: string;
+  confidence: "high" | "medium" | "low";
+  supports: Array<{ price: number; touches: number }>;
+  resistances: Array<{ price: number; touches: number }>;
+  plans: { long: PricePlan; short: PricePlan };
+  note: string;
+}
+
 export interface ApprovalVerdict {
   verdict: "SAFE" | "CAUTION" | "RISK";
   explanation: string;
@@ -94,6 +143,16 @@ const trim = (url: string) => url.replace(/\/+$/, "");
 export function getIchimokuSignal(client: FizzlClient, urls: ServiceUrls, input: SignalInput): Promise<PaidResult<IchimokuSignal>> {
   const query = new URLSearchParams({ interval: input.interval });
   return client.request<IchimokuSignal>(`${trim(urls.ichimoku)}/signal/${encodeURIComponent(input.pair)}?${query}`);
+}
+
+export function getConfluenceSignal(client: FizzlClient, urls: ServiceUrls, input: SignalInput): Promise<PaidResult<ConfluenceSignal>> {
+  const query = new URLSearchParams({ interval: input.interval });
+  return client.request<ConfluenceSignal>(`${trim(urls.ichimoku)}/signals/${encodeURIComponent(input.pair)}?${query}`);
+}
+
+export function getPriceLevels(client: FizzlClient, urls: ServiceUrls, input: SignalInput): Promise<PaidResult<PriceLevels>> {
+  const query = new URLSearchParams({ interval: input.interval });
+  return client.request<PriceLevels>(`${trim(urls.ichimoku)}/levels/${encodeURIComponent(input.pair)}?${query}`);
 }
 
 export function checkWalletApprovals(client: FizzlClient, urls: ServiceUrls, input: WalletInput): Promise<PaidResult<ApprovalVerdict>> {
