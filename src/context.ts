@@ -33,6 +33,7 @@ export function getContext(runtime: IAgentRuntime): Promise<FizzlContext> {
           ichimoku: setting(runtime, "ICHIMOKU_SIGNAL_URL") ?? DEFAULT_URLS.ichimoku,
           plaintext: setting(runtime, "PLAINTEXT_URL") ?? DEFAULT_URLS.plaintext,
           doctor: setting(runtime, "X402_DOCTOR_URL") ?? DEFAULT_URLS.doctor,
+          presign: setting(runtime, "PRESIGN_GUARD_URL") ?? DEFAULT_URLS.presign,
         },
       };
     })();

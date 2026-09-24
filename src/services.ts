@@ -1,7 +1,7 @@
 // Typed calls to each paid endpoint.
 
 import type { FizzlClient, PaidResult } from "./client.js";
-import type { DiagnoseInput, EvmChain, PreflightInput, SignalInput, WalletInput } from "./parse.js";
+import type { DiagnoseInput, EvmChain, PreflightInput, PresignInput, SignalInput, WalletInput } from "./parse.js";
 
 export interface IchimokuSignal {
   pair: string;
@@ -61,16 +61,32 @@ export interface Preflight {
   cached?: boolean;
 }
 
+export interface PresignReason {
+  code: string;
+  severity: "red" | "orange" | "info";
+  subject?: string;
+  details?: unknown;
+}
+
+export interface PresignVerdict {
+  verdict: "green" | "orange" | "red";
+  reasons: PresignReason[];
+  subject?: Record<string, unknown>;
+  explanation?: { lang: string; text: string };
+}
+
 export interface ServiceUrls {
   ichimoku: string;
   plaintext: string;
   doctor: string;
+  presign: string;
 }
 
 export const DEFAULT_URLS: ServiceUrls = {
   ichimoku: "https://ichimoku-signal.onrender.com",
   plaintext: "https://smartcontractexplainer.onrender.com",
   doctor: "https://x402-doctor.onrender.com",
+  presign: "https://presign-guard.onrender.com",
 };
 
 const trim = (url: string) => url.replace(/\/+$/, "");
@@ -107,4 +123,14 @@ export function preflightX402(client: FizzlClient, urls: ServiceUrls, input: Pre
   if (input.maxUsd !== undefined) query.set("max_usd", String(input.maxUsd));
   if (input.network) query.set("network", input.network);
   return client.request<Preflight>(`${trim(urls.doctor)}/api/v1/preflight?${query}`);
+}
+
+export function presignCheck(client: FizzlClient, urls: ServiceUrls, input: PresignInput): Promise<PaidResult<PresignVerdict>> {
+  const path = input.explain ? "/v1/check/explain" : "/v1/check";
+  const body = input.explain ? { ...input.request, lang: input.lang } : input.request;
+  return client.request<PresignVerdict>(`${trim(urls.presign)}${path}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
 }

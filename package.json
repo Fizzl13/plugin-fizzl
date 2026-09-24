@@ -1,7 +1,7 @@
 {
   "name": "plugin-fizzl",
-  "version": "0.3.0",
-  "description": "ElizaOS plugin for Fizzl's x402 agent services: Ichimoku Cloud trading signals, PlainText wallet-approval risk checks, and x402 Doctor pre-payment checks and endpoint diagnosis. Pays per call in USDC on Solana or Base.",
+  "version": "0.4.0",
+  "description": "ElizaOS plugin for Fizzl's x402 agent services: Ichimoku Cloud trading signals, PlainText wallet-approval risk checks, x402 Doctor pre-payment checks and endpoint diagnosis, and presign-guard checks before signing. Pays per call in USDC on Solana or Base.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -44,13 +44,13 @@
     "pluginParameters": {
       "SVM_PRIVATE_KEY": {
         "type": "string",
-        "description": "Solana secret key (base58) that pays all Fizzl services in USDC on Solana",
+        "description": "Solana secret key (base58) that pays Fizzl services in USDC on Solana (all except presign-guard, which is Base only)",
         "required": false,
         "sensitive": true
       },
       "EVM_PRIVATE_KEY": {
         "type": "string",
-        "description": "EVM private key (0x…) that pays in USDC on Base; optional when SVM_PRIVATE_KEY is set",
+        "description": "EVM private key (0x…) that pays in USDC on Base; needed for presign-guard, otherwise optional when SVM_PRIVATE_KEY is set",
         "required": false,
         "sensitive": true
       },
@@ -72,6 +72,12 @@
         "required": false,
         "default": "https://smartcontractexplainer.onrender.com"
       },
+      "PRESIGN_GUARD_URL": {
+        "type": "string",
+        "description": "presign-guard base URL",
+        "required": false,
+        "default": "https://presign-guard.onrender.com"
+      },
       "SOLANA_RPC_URL": {
         "type": "string",
         "description": "Solana RPC used to build payments (default: public mainnet RPC)",
@@ -90,7 +96,9 @@
     "wallet-security",
     "approvals",
     "diagnostics",
-    "safety"
+    "safety",
+    "presign",
+    "eip-712"
   ],
   "license": "MIT"
 }

@@ -143,3 +143,53 @@ export function parsePreflightInput(text: string, options: Record<string, unknow
   if (network) input.network = network;
   return input;
 }
+
+export interface PresignInput {
+  /** The presign-guard request: { type: "approval" | "transaction" | "signature", chainId, … }. */
+  request: Record<string, unknown>;
+  explain: boolean;
+  lang: "en" | "nl";
+}
+
+const CHAIN_IDS: Partial<Record<EvmChain, number>> = { ethereum: 1, bsc: 56, polygon: 137, arbitrum: 42161, optimism: 10, base: 8453 };
+
+function chainIdFrom(text: string, value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && /^(0x[0-9a-f]+|\d+)$/i.test(value.trim())) return Number(value.trim());
+  const lower = text.toLowerCase();
+  for (const [alias, chain] of Object.entries(CHAIN_ALIASES)) {
+    if (CHAIN_IDS[chain] && new RegExp(`\\b${alias}\\b`).test(lower)) return CHAIN_IDS[chain]!;
+  }
+  return 8453;
+}
+
+// What the agent is about to sign, as a presign-guard request. Accepts:
+// a ready request ({ type, chainId, … }), an eth_signTypedData_v4 payload
+// ({ domain, primaryType, message }) or a transaction ({ to, data, value? }).
+export function parsePresignInput(text: string, options: Record<string, unknown> = {}): PresignInput | null {
+  const given = options.request ?? options.typedData ?? options.transaction;
+  const payload = given && typeof given === "object" && !Array.isArray(given)
+    ? (given as Record<string, unknown>)
+    : parseApprovalPayload(text, options);
+  if (!payload) return null;
+
+  let request: Record<string, unknown> | null = null;
+  if (payload.type === "approval" || payload.type === "transaction" || payload.type === "signature") {
+    request = { ...payload, chainId: chainIdFrom(text, payload.chainId) };
+  } else if (typeof payload.primaryType === "string" && payload.domain && typeof payload.domain === "object" && payload.message && typeof payload.message === "object") {
+    request = { type: "signature", chainId: chainIdFrom(text, (payload.domain as Record<string, unknown>).chainId), typedData: payload };
+  } else if (typeof payload.to === "string" && /^0x[a-fA-F0-9]{40}$/.test(payload.to) && (typeof payload.data === "string" || payload.value !== undefined)) {
+    request = {
+      type: "transaction",
+      chainId: chainIdFrom(text, payload.chainId),
+      to: payload.to,
+      data: typeof payload.data === "string" ? payload.data : "0x",
+      ...(payload.value !== undefined ? { value: String(payload.value) } : {}),
+    };
+  }
+  if (!request) return null;
+
+  const explain = options.explain === true || /\b(explain|in plain|plain language|uitleg)\b/i.test(text);
+  const lang = options.lang === "nl" || /\b(dutch|nederlands|in het nederlands)\b/i.test(text) ? "nl" : "en";
+  return { request, explain, lang };
+}
