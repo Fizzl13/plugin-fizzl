@@ -23,7 +23,7 @@ const servicesProvider: Provider = {
       "- FIZZL_EXPLAIN_APPROVAL: plain-language verdict on an approval JSON, $0.05 (Solana or Base)",
       "- FIZZL_PREFLIGHT_X402: before paying an unknown x402 endpoint, GO/CAUTION/NO-GO with the recommended option, $0.001 (Solana or Base)",
       "- FIZZL_DIAGNOSE_X402: diagnose why an x402 paid endpoint fails, with fix hints, $0.01 (Solana or Base)",
-      "- FIZZL_PRESIGN_CHECK: before signing a transaction, approval or EIP-712 signature, GREEN/ORANGE/RED with reasons, $0.01 (Base)",
+      "- FIZZL_PRESIGN_CHECK: before signing a transaction, approval or EIP-712 signature, GREEN/ORANGE/RED with reasons (spender and token: phishing, honeypots, fake tokens), $0.01 (Base)",
       wallets.length ? `Paying wallets: ${wallets.join(", ")}` : "No paying wallet configured; these tools will fail until SVM_PRIVATE_KEY or EVM_PRIVATE_KEY is set.",
     ].join("\n");
     return { text, values: { fizzlCanPay: client.canPay, fizzlWallets: wallets.join(", ") } };
