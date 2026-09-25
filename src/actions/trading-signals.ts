@@ -1,7 +1,7 @@
 import type { Action, ActionResult } from "@elizaos/core";
 import { getContext } from "../context.js";
-import { parseSignalInput } from "../parse.js";
-import { getConfluenceSignal, getPriceLevels, type ConfluenceSignal, type PriceLevels } from "../services.js";
+import { parseScanInput, parseSignalInput } from "../parse.js";
+import { getConfluenceSignal, getMarketScan, getPriceLevels, type ConfluenceSignal, type MarketScan, type PriceLevels } from "../services.js";
 import { failure, paymentLine } from "./shared.js";
 
 const fmt = (n: number | undefined) => (typeof n === "number" && Number.isFinite(n) ? n.toLocaleString("en-US", { maximumSignificantDigits: 8 }) : "?");
@@ -31,7 +31,7 @@ export const confluenceSignalAction: Action = {
   name: "FIZZL_CONFLUENCE_SIGNAL",
   similes: ["CONFLUENCE_SIGNAL", "TECHNICAL_ANALYSIS", "RSI_MACD", "ALL_INDICATORS", "TRADING_SIGNALS"],
   description:
-    "Six indicators for a crypto pair in one call: Ichimoku, RSI (14), MACD (12/26/9), EMA 50/200, Bollinger Bands and volume (OBV), each with a bullish/bearish/neutral vote, plus a combined signal and confidence (\"4 of 6 indicators bullish\"). Top 100 coins. Paid per call via x402: $0.10 USDC on Solana or Base. Parameters: pair (e.g. SOL-USDT), interval (1m…1M, default 1h).",
+    "Six indicators for a crypto pair in one call: Ichimoku, RSI (14), MACD (12/26/9), EMA 50/200, Bollinger Bands and volume (OBV), each with a bullish/bearish/neutral vote, plus a combined signal and confidence (\"4 of 6 indicators bullish\"). Top 200 coins. Paid per call via x402: $0.10 USDC on Solana or Base. Parameters: pair (e.g. SOL-USDT), interval (1m…1M, default 1h).",
   validate: async (_runtime, message) => {
     const text = message.content?.text ?? "";
     return CONFLUENCE_TRIGGER.test(text) && parseSignalInput(text) !== null;
@@ -81,7 +81,7 @@ export const priceLevelsAction: Action = {
   name: "FIZZL_PRICE_LEVELS",
   similes: ["PRICE_LEVELS", "SUPPORT_RESISTANCE", "PRICE_TARGETS", "STOP_AND_TARGETS", "TRADE_PLAN"],
   description:
-    "Price levels for a crypto pair: up to 3 supports and resistances (swing highs/lows and pivots), ATR, Fibonacci and Ichimoku levels, the bias from the 6-indicator confluence vote, and a long and a short plan (entry, stop, two targets, risk/reward). Top 100 coins. Levels from price history, not trade advice. Paid per call via x402: $0.05 USDC on Solana or Base. Parameters: pair (e.g. SOL-USDT), interval (1m…1M, default 1h).",
+    "Price levels for a crypto pair: up to 3 supports and resistances (swing highs/lows and pivots), ATR, Fibonacci and Ichimoku levels, the bias from the 6-indicator confluence vote, and a long and a short plan (entry, stop, two targets, risk/reward). Top 200 coins. Levels from price history, not trade advice. Paid per call via x402: $0.05 USDC on Solana or Base. Parameters: pair (e.g. SOL-USDT), interval (1m…1M, default 1h).",
   validate: async (_runtime, message) => {
     const text = message.content?.text ?? "";
     return LEVELS_TRIGGER.test(text) && parseSignalInput(text) !== null;
@@ -105,6 +105,48 @@ export const priceLevelsAction: Action = {
     [
       { name: "{{user}}", content: { text: "Where are support and resistance for BTC-USDT on the 4h, and where would the stop go?" } },
       { name: "{{agent}}", content: { text: "BTC-USDT 4h: LONG bias (4 of 6 indicators bullish)\nPrice 84,244 · ATR 993 (1.18%)\nResistance: 84,404 · 84,979 · 85,385\nSupport: 83,901 · 83,470 · 82,891\nLong plan: entry 84,244 · stop 82,643 · targets 85,385 / 87,223 (R/R 0.71 / 1.86)\nLevels computed from price history, not trade advice or a prediction.", actions: ["FIZZL_PRICE_LEVELS"] } },
+    ],
+  ],
+};
+
+// --- Market scan: every top-200 coin in one call ($0.25) ---
+
+const SCAN_TRIGGER = /\b(scan|screener|screen the market|market breadth|market overview|which coins|what coins|all coins|every coin|strongest coins|weakest coins|top movers)\b/i;
+
+const coin = (c: MarketScan["coins"][number]) => `${c.pair.replace(/-USDT$/, "")} ${c.cloud_distance_percent > 0 ? "+" : ""}${fmt(c.cloud_distance_percent)}%`;
+
+export function formatScan(s: MarketScan): string {
+  const head = `Market scan ${s.interval}: ${s.breadth} (${s.summary.bullish} bullish · ${s.summary.neutral} neutral · ${s.summary.bearish} bearish)`;
+  const lines = s.filter
+    ? [`${s.filter[0].toUpperCase()}${s.filter.slice(1)} (${s.coins.length}): ${s.coins.slice(0, 10).map(coin).join(" · ") || "none"}`]
+    : [`Strongest: ${s.coins.slice(0, 5).map(coin).join(" · ")}`, `Weakest: ${s.coins.slice(-5).reverse().map(coin).join(" · ")}`];
+  return [head, ...lines, "% = price distance above (+) or below (−) the Ichimoku cloud. Not trade advice."].join("\n");
+}
+
+export const marketScanAction: Action = {
+  name: "FIZZL_MARKET_SCAN",
+  similes: ["MARKET_SCAN", "SCAN_MARKET", "CRYPTO_SCREENER", "MARKET_BREADTH", "WHICH_COINS_BULLISH"],
+  description:
+    "The Ichimoku Cloud signal for 148 top-200 coins (stablecoins excluded) in one call, sorted from strongest bullish to strongest bearish by the price's distance from the cloud, with market breadth (\"98 of 148 coins bullish\"). Paid per call via x402: $0.25 USDC on Solana or Base. Parameters: interval (1m…1M, default 1h), signal (optional filter: bullish, bearish or neutral).",
+  validate: async (_runtime, message) => SCAN_TRIGGER.test(message.content?.text ?? ""),
+  handler: async (runtime, message, _state, options, callback): Promise<ActionResult> => {
+    const input = parseScanInput(message.content?.text ?? "", (options ?? {}) as Record<string, unknown>);
+    const { client, urls } = await getContext(runtime);
+    const result = await getMarketScan(client, urls, input);
+    if (!result.ok || !result.data) return failure(callback, `Could not scan the market: ${result.error}`);
+    const text = `${formatScan(result.data)}${paymentLine(result.payment)}`;
+    await callback?.({ text, actions: ["FIZZL_MARKET_SCAN"], source: message.content?.source });
+    return {
+      success: true,
+      text,
+      values: { scanBreadth: result.data.breadth, scanInterval: result.data.interval, scanBullish: result.data.summary.bullish, scanBearish: result.data.summary.bearish },
+      data: { scan: result.data, payment: result.payment },
+    };
+  },
+  examples: [
+    [
+      { name: "{{user}}", content: { text: "Scan the market on the 1d: which coins are strongest?" } },
+      { name: "{{agent}}", content: { text: "Market scan 1d: 104 of 144 coins bullish (104 bullish · 12 neutral · 28 bearish)\nStrongest: BP +29.99% · USELESS +28.59% · NEAR +28.52% · DRV +25.41% · RAY +24.13%\nWeakest: SPX -50.99% · KAG -17.52% · RAIN -13.34% · LEO -4.869% · ASTER -4.594%\n% = price distance above (+) or below (−) the Ichimoku cloud. Not trade advice.", actions: ["FIZZL_MARKET_SCAN"] } },
     ],
   ],
 };
