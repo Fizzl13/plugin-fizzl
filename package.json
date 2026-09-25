@@ -1,6 +1,6 @@
 {
   "name": "plugin-fizzl",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "ElizaOS plugin: 9 paid tools for crypto agents, paid per call in USDC over x402 on Solana or Base (no API keys). Trading signals (Ichimoku, 6-indicator confluence, price levels with stop and targets, a market scan of 148 top-200 coins), wallet-approval risk checks, pre-sign checks and x402 endpoint checks.",
   "type": "module",
   "main": "dist/index.js",

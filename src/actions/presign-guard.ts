@@ -25,7 +25,7 @@ export const presignCheckAction: Action = {
   name: "FIZZL_PRESIGN_CHECK",
   similes: ["PRESIGN_CHECK", "CHECK_BEFORE_SIGNING", "IS_IT_SAFE_TO_SIGN", "SIGNATURE_RISK_CHECK", "TRANSACTION_RISK_CHECK"],
   description:
-    "Before signing an EVM transaction, token approval or EIP-712 signature (Permit, Permit2, Seaport, x402 payment), ask presign-guard for a GREEN / ORANGE / RED verdict with reason codes: only sign on green, ask a person on orange, never sign on red. Paid per call via x402: $0.01 USDC on Base ($0.03 with a plain-language explanation). Parameters: request (presign-guard body), or typedData (eth_signTypedData_v4 payload), or transaction ({ to, data, value, chainId }); explain (boolean), lang (en|nl).",
+    "Before signing an EVM transaction, token approval or EIP-712 signature (Permit, Permit2, Seaport, x402 payment), ask presign-guard for a GREEN / ORANGE / RED verdict with reason codes. It checks who gets access (flagged or phishing addresses, plain wallets, unlimited or long-lived permissions) and the token itself (honeypots, fakes of known tokens such as a fake USDC in an x402 payment, owner powers, high taxes): only sign on green, ask a person on orange, never sign on red. Paid per call via x402: $0.01 USDC on Base ($0.03 with a plain-language explanation). Parameters: request (presign-guard body), or typedData (eth_signTypedData_v4 payload), or transaction ({ to, data, value, chainId }); explain (boolean), lang (en|nl).",
   validate: async (_runtime, message) => {
     const text = message.content?.text ?? "";
     return ASK.test(text) && parsePresignInput(text) !== null;
