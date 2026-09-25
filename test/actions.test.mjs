@@ -7,6 +7,7 @@ const action = (name) => plugin.actions.find((a) => a.name === name);
 const ICHIMOKU = action("FIZZL_ICHIMOKU_SIGNAL");
 const CONFLUENCE = action("FIZZL_CONFLUENCE_SIGNAL");
 const LEVELS = action("FIZZL_PRICE_LEVELS");
+const SCAN = action("FIZZL_MARKET_SCAN");
 const CHECK = action("FIZZL_CHECK_WALLET_APPROVALS");
 const EXPLAIN = action("FIZZL_EXPLAIN_APPROVAL");
 const DOCTOR = action("FIZZL_DIAGNOSE_X402");
@@ -298,4 +299,30 @@ test("services provider lists the new tools with their prices", async () => {
   const out = await fizzlPlugin.providers[0].get(runtimeWith({}), message(""), {});
   assert.match(out.text, /FIZZL_CONFLUENCE_SIGNAL: .*\$0\.10/);
   assert.match(out.text, /FIZZL_PRICE_LEVELS: .*\$0\.05/);
+  assert.match(out.text, /FIZZL_MARKET_SCAN: .*\$0\.25/);
+});
+
+test("Market scan: pays $0.25 on Solana and reports breadth, strongest and weakest", async () => {
+  fx.state.payments.length = 0;
+  const { result, replies } = await run(SCAN, runtimeWith({ SVM_PRIVATE_KEY: sol.secret }), "Scan the market on the daily: which coins are strongest?");
+  assert.equal(result.success, true, result.error);
+  assert.deepEqual(fx.state.payments.map((p) => [p.network, p.valid, p.path]), [[SOLANA, true, "/scan?interval=1d"]]);
+  assert.match(replies[0].text, /^Market scan 1d: 3 of 6 coins bullish \(3 bullish · 1 neutral · 2 bearish\)/);
+  assert.match(replies[0].text, /Strongest: BP \+29\.99% · NEAR \+28\.52%/);
+  assert.match(replies[0].text, /Weakest: SPX -50\.99% · LEO -4\.869%/);
+  assert.equal(result.values.scanBullish, 3);
+});
+
+test("Market scan: 'which coins are bearish' filters, and needs no pair", async () => {
+  fx.state.payments.length = 0;
+  const { result, replies } = await run(SCAN, runtimeWith({ EVM_PRIVATE_KEY: evm.secret }), "Which coins are bearish on the 4h?");
+  assert.equal(result.success, true, result.error);
+  assert.deepEqual(fx.state.payments.map((p) => [p.network, p.path]), [[BASE, "/scan?interval=4h&signal=bearish"]]);
+  assert.match(replies[0].text, /Bearish \(2\): LEO -4\.869% · SPX -50\.99%/);
+  const v = (text) => SCAN.validate(runtimeWith({}), message(text));
+  assert.equal(await v("run a crypto screener"), true);
+  assert.equal(await v("what is the RSI of BTC"), false);
+  const { parseScanInput } = await import("../dist/index.js");
+  assert.deepEqual(parseScanInput("scan all coins"), { interval: "1h" });
+  assert.deepEqual(parseScanInput("which coins are bullish on the weekly", {}), { interval: "1w", signal: "bullish" });
 });

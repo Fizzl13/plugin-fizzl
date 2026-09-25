@@ -66,6 +66,30 @@ export interface PriceLevels {
   note: string;
 }
 
+export interface ScanCoin {
+  pair: string;
+  signal: "bullish" | "bearish" | "neutral";
+  price: number;
+  cloud_position: string;
+  tenkan_kijun_cross: string;
+  cloud_distance_percent: number;
+  exchange: string;
+}
+
+export interface MarketScan {
+  interval: string;
+  timestamp: string;
+  coins_scanned: number;
+  summary: { bullish: number; neutral: number; bearish: number };
+  breadth: string;
+  filter?: "bullish" | "bearish" | "neutral";
+  coins: ScanCoin[];
+  skipped: Array<{ pair: string; reason: string }>;
+  note: string;
+}
+
+export interface ScanInput { interval: string; signal?: "bullish" | "bearish" | "neutral" }
+
 export interface ApprovalVerdict {
   verdict: "SAFE" | "CAUTION" | "RISK";
   explanation: string;
@@ -153,6 +177,11 @@ export function getConfluenceSignal(client: FizzlClient, urls: ServiceUrls, inpu
 export function getPriceLevels(client: FizzlClient, urls: ServiceUrls, input: SignalInput): Promise<PaidResult<PriceLevels>> {
   const query = new URLSearchParams({ interval: input.interval });
   return client.request<PriceLevels>(`${trim(urls.ichimoku)}/levels/${encodeURIComponent(input.pair)}?${query}`);
+}
+
+export function getMarketScan(client: FizzlClient, urls: ServiceUrls, input: ScanInput): Promise<PaidResult<MarketScan>> {
+  const query = new URLSearchParams({ interval: input.interval, ...(input.signal ? { signal: input.signal } : {}) });
+  return client.request<MarketScan>(`${trim(urls.ichimoku)}/scan?${query}`);
 }
 
 export function checkWalletApprovals(client: FizzlClient, urls: ServiceUrls, input: WalletInput): Promise<PaidResult<ApprovalVerdict>> {

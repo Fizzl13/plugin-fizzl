@@ -50,6 +50,19 @@ export function parseSignalInput(text: string, options: Record<string, unknown> 
   return null;
 }
 
+export interface ScanInput { interval: string; signal?: "bullish" | "bearish" | "neutral" }
+
+// "which coins are bullish on the 4h?" → { interval: "4h", signal: "bullish" }
+// "scan the market"                    → { interval: "1h" }
+export function parseScanInput(text: string, options: Record<string, unknown> = {}): ScanInput {
+  const interval = typeof options.interval === "string" && (INTERVALS as readonly string[]).includes(options.interval)
+    ? options.interval
+    : parseInterval(text) ?? "1h";
+  const wanted = typeof options.signal === "string" ? options.signal.toLowerCase() : /\b(bullish|bearish|neutral)\b/i.exec(text)?.[1].toLowerCase();
+  const signal = wanted === "bullish" || wanted === "bearish" || wanted === "neutral" ? wanted : undefined;
+  return signal ? { interval, signal } : { interval };
+}
+
 function parseInterval(text: string): string | null {
   // "1M" is a month and case-sensitive; everything else is matched loosely.
   const exact = /\b(1M)\b/.exec(text);

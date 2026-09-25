@@ -161,6 +161,23 @@ export async function startFixtures() {
         }),
       })(req, res, body);
     }
+    if (url.pathname === "/scan") {
+      const c = (pair, signal, d) => ({ pair, signal, price: 1, cloud_position: signal === "bullish" ? "above_cloud" : signal === "bearish" ? "below_cloud" : "in_cloud", tenkan_kijun_cross: "flat", cloud_distance_percent: d, exchange: "Binance.US" });
+      const all = [c("BP-USDT", "bullish", 29.99), c("NEAR-USDT", "bullish", 28.52), c("BTC-USDT", "bullish", 2.1), c("TAO-USDT", "neutral", 0), c("LEO-USDT", "bearish", -4.869), c("SPX-USDT", "bearish", -50.99)];
+      const filter = url.searchParams.get("signal");
+      return paidRoute({
+        accepts: [baseOption("250000"), solanaOption("250000")],
+        resourceUrl: (r) => `${ichimokuUrl}${r.url}`,
+        state,
+        respond: () => ({
+          interval: intervalOf(), timestamp: "2026-09-25T05:20:00.000Z", coins_scanned: 6,
+          summary: { bullish: 3, neutral: 1, bearish: 2 }, breadth: "3 of 6 coins bullish",
+          ...(filter ? { filter } : {}),
+          coins: filter ? all.filter((x) => x.signal === filter) : all,
+          skipped: [], note: "Ichimoku signals from price history, not trade advice.",
+        }),
+      })(req, res, body);
+    }
     if (url.pathname.startsWith("/levels/")) {
       const plan = (dir) => ({ entry: 84244, stop: dir > 0 ? 82643 : 85900, target_1: dir > 0 ? 85385 : 82891, target_2: dir > 0 ? 87223 : 81500, risk_reward_1: 0.71, risk_reward_2: 1.86, stop_basis: dir > 0 ? "below support 82891" : "above resistance 85385", obstacle_before_target: null });
       return paidRoute({
