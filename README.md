@@ -11,7 +11,7 @@ You:   Which coins are bullish on the 4h?
 Agent: Market scan 4h: 98 of 148 coins bullish (98 bullish · 21 neutral · 29 bearish)
        Bullish (98): QNT +18.8% · XPL +16.1% · BP +15.7% · ONDO +14.1% · USELESS +8.94% · …
        % = price distance above (+) or below (−) the Ichimoku cloud. Not trade advice.
-       Paid via x402: https://solscan.io/tx/…            ($0.25 USDC, no API key)
+       Paid via x402: https://solscan.io/tx/…
 ```
 
 | Action | Service | What it does | Price | Pays on |
