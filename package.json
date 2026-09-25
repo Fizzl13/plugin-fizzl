@@ -1,7 +1,7 @@
 {
   "name": "plugin-fizzl",
-  "version": "0.6.0",
-  "description": "ElizaOS plugin for Fizzl's x402 agent services: Ichimoku Cloud trading signals, PlainText wallet-approval risk checks, x402 Doctor pre-payment checks and endpoint diagnosis, and presign-guard checks before signing. Pays per call in USDC on Solana or Base.",
+  "version": "0.6.1",
+  "description": "ElizaOS plugin: 9 paid tools for crypto agents, paid per call in USDC over x402 on Solana or Base (no API keys). Trading signals (Ichimoku, 6-indicator confluence, price levels with stop and targets, a market scan of 148 top-200 coins), wallet-approval risk checks, pre-sign checks and x402 endpoint checks.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -13,6 +13,10 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/Fizzl13/plugin-fizzl"
+  },
+  "homepage": "https://github.com/Fizzl13/plugin-fizzl#readme",
+  "bugs": {
+    "url": "https://github.com/Fizzl13/plugin-fizzl/issues"
   },
   "engines": {
     "node": ">=20"
@@ -98,7 +102,21 @@
     "diagnostics",
     "safety",
     "presign",
-    "eip-712"
+    "eip-712",
+    "crypto",
+    "crypto-signals",
+    "trading-signals",
+    "technical-analysis",
+    "market-scan",
+    "screener",
+    "rsi",
+    "macd",
+    "support-resistance",
+    "usdc",
+    "micropayments",
+    "ai-agents",
+    "agent-tools",
+    "mcp"
   ],
   "license": "MIT"
 }

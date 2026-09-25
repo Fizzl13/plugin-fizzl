@@ -2,7 +2,17 @@
 
 ![plugin-fizzl](images/banner.jpg)
 
-ElizaOS plugin for Fizzl's x402 agent services. Your agent pays per call in USDC — no API keys, no accounts.
+ElizaOS plugin that gives your agent 9 paid tools for crypto: trading signals, a market scan of 148 coins,
+price levels with stop and targets, and safety checks before it signs or pays. Your agent pays per call in USDC on
+Solana or Base over x402: no API keys, no accounts, no subscriptions.
+
+```text
+You:   Which coins are bullish on the 4h?
+Agent: Market scan 4h: 98 of 148 coins bullish (98 bullish · 21 neutral · 29 bearish)
+       Bullish (98): QNT +18.8% · XPL +16.1% · BP +15.7% · ONDO +14.1% · USELESS +8.94% · …
+       % = price distance above (+) or below (−) the Ichimoku cloud. Not trade advice.
+       Paid via x402: https://solscan.io/tx/…
+```
 
 | Action | Service | What it does | Price | Pays on |
 |--------|---------|--------------|-------|---------|
@@ -57,6 +67,10 @@ spend; the spend cap limits a single payment, not the total.
 
 - “What does the Ichimoku cloud say for SOL/USDT on the 4h?” → `SOL-USDT`, `4h`
 - “Is $JUP above the cloud on the daily?” → `JUP-USDT`, `1d`
+- “RSI, MACD and the other indicators for ETH on the 4h?” → confluence, `ETH-USDT`, `4h`
+- “Where are support and resistance for BTC, and where would the stop go?” → price levels, `BTC-USDT`
+- “Scan the market on the daily: which coins are strongest?” → market scan, `1d`
+- “Which coins are bearish on the 4h?” → market scan, `4h`, bearish only
 - “Are the NFT approvals on 0x6B0F…5F25 safe on arbitrum?” → wallet check, `arbitrum`, `nft`
 - “Is this approval safe? ```json {…}```” → explain the payload
 - “Is it safe to sign this? {"primaryType":"Permit","domain":{…},"message":{…}}” → presign check of the typed data
