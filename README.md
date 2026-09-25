@@ -2,6 +2,10 @@
 
 ![plugin-fizzl](images/banner.jpg)
 
+[![Watch: an Eliza agent using plugin-fizzl (39 s)](https://ichimoku-signal.onrender.com/media/plugin.jpg)](https://ichimoku-signal.onrender.com/media/plugin.mp4)
+
+▶ [Watch the 39-second video](https://ichimoku-signal.onrender.com/media/plugin.mp4): install, then an agent answers "which coins are bullish on the 4h?" and "where would the stop go?", paying per call.
+
 ElizaOS plugin that gives your agent 9 paid tools for crypto: trading signals, a market scan of 148 coins,
 price levels with stop and targets, and safety checks before it signs or pays. Your agent pays per call in USDC on
 Solana or Base over x402: no API keys, no accounts, no subscriptions.
