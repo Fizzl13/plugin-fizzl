@@ -143,7 +143,7 @@ export async function startFixtures() {
     const intervalOf = () => url.searchParams.get("interval") || "1h";
     if (url.pathname.startsWith("/signals/")) {
       return paidRoute({
-        accepts: [baseOption("100000"), solanaOption("100000")],
+        accepts: [baseOption("150000"), solanaOption("150000")],
         resourceUrl: (r) => `${ichimokuUrl}${r.url}`,
         state,
         respond: () => ({
@@ -166,7 +166,7 @@ export async function startFixtures() {
       const all = [c("BP-USDT", "bullish", 29.99), c("NEAR-USDT", "bullish", 28.52), c("BTC-USDT", "bullish", 2.1), c("TAO-USDT", "neutral", 0), c("LEO-USDT", "bearish", -4.869), c("SPX-USDT", "bearish", -50.99)];
       const filter = url.searchParams.get("signal");
       return paidRoute({
-        accepts: [baseOption("250000"), solanaOption("250000")],
+        accepts: [baseOption("100000"), solanaOption("100000")],
         resourceUrl: (r) => `${ichimokuUrl}${r.url}`,
         state,
         respond: () => ({
@@ -175,6 +175,26 @@ export async function startFixtures() {
           ...(filter ? { filter } : {}),
           coins: filter ? all.filter((x) => x.signal === filter) : all,
           skipped: [], note: "Ichimoku signals from price history, not trade advice.",
+        }),
+      })(req, res, body);
+    }
+    if (url.pathname === "/setups") {
+      const s = (rank, pair, direction, entry, stop, t1, t2, rr, extra = {}) => ({ rank, rank_score: 0.5 - rank / 20, pair, direction, confidence: "high", signal_from: `6 of 6 indicators ${direction === "long" ? "bullish" : "bearish"}`, entry, stop, target_1: t1, target_2: t2, risk_reward_1: rr, risk_reward_2: rr + 1, stop_basis: "below support", obstacle_before_target: null, atr_percent: 3, volume_24h_usd: 500000, exchange: "Binance.US", ...extra });
+      const all = [s(1, "FIL-USDT", "long", 1.1323, 1.1012, 1.1993, 1.2585, 2.15), s(2, "WBT-USDT", "short", 44.1, 45.4, 40.9, 39.6, 2.4), s(3, "JST-USDT", "long", 0.12271, 0.12146, 0.12517, 0.12759, 1.97, { warning: "support/resistance right after the entry, before target 1" })];
+      const direction = url.searchParams.get("direction") || "both";
+      const minRr = Number(url.searchParams.get("min_rr") || 1.5);
+      const top = Number(url.searchParams.get("top") || 10);
+      const matching = all.filter((x) => (direction === "both" || x.direction === direction) && x.risk_reward_1 >= minRr);
+      return paidRoute({
+        accepts: [baseOption("500000"), solanaOption("500000")],
+        resourceUrl: (r) => `${ichimokuUrl}${r.url}`,
+        state,
+        respond: () => ({
+          interval: intervalOf(), timestamp: "2026-09-26T21:07:41.172Z", coins_scanned: 147,
+          filters: { direction, min_risk_reward: minRr, top }, setups_found: matching.length,
+          summary: { long: matching.filter((x) => x.direction === "long").length, short: matching.filter((x) => x.direction === "short").length, neutral_coins: 32 },
+          setups: matching.slice(0, top).map((x, i) => ({ ...x, rank: i + 1 })), skipped: [],
+          note: "Setups computed from price history, not trade advice or a prediction.",
         }),
       })(req, res, body);
     }

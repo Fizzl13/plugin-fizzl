@@ -63,6 +63,24 @@ export function parseScanInput(text: string, options: Record<string, unknown> = 
   return signal ? { interval, signal } : { interval };
 }
 
+export interface SetupsInput { interval: string; direction?: "long" | "short"; min_rr?: number; top?: number }
+
+// "best long setups on the 1d, R/R 2 or better, top 5" → { interval: "1d", direction: "long", min_rr: 2, top: 5 }
+// "what should I trade?"                               → { interval: "4h" }
+export function parseSetupsInput(text: string, options: Record<string, unknown> = {}): SetupsInput {
+  const interval = typeof options.interval === "string" && (INTERVALS as readonly string[]).includes(options.interval)
+    ? options.interval
+    : parseInterval(text) ?? "4h";
+  const out: SetupsInput = { interval };
+  const dir = typeof options.direction === "string" ? options.direction.toLowerCase() : /\b(longs?|shorts?)\b/i.exec(text)?.[1].toLowerCase().replace(/s$/, "");
+  if (dir === "long" || dir === "short") out.direction = dir;
+  const rr = typeof options.min_rr === "number" ? options.min_rr : Number(/\b(?:r\s*\/\s*r|rr|risk[\s/-]*reward)(?:\s+(?:of|at least|above|over|>=?))?\s*(\d+(?:\.\d+)?)/i.exec(text)?.[1]);
+  if (Number.isFinite(rr) && rr >= 1 && rr <= 10) out.min_rr = rr;
+  const top = typeof options.top === "number" ? options.top : Number(/\btop\s*(\d{1,2})\b/i.exec(text)?.[1]);
+  if (Number.isInteger(top) && top >= 1 && top <= 50) out.top = top;
+  return out;
+}
+
 function parseInterval(text: string): string | null {
   // "1M" is a month and case-sensitive; everything else is matched loosely.
   const exact = /\b(1M)\b/.exec(text);

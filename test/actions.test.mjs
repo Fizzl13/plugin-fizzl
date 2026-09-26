@@ -8,6 +8,7 @@ const ICHIMOKU = action("FIZZL_ICHIMOKU_SIGNAL");
 const CONFLUENCE = action("FIZZL_CONFLUENCE_SIGNAL");
 const LEVELS = action("FIZZL_PRICE_LEVELS");
 const SCAN = action("FIZZL_MARKET_SCAN");
+const SETUPS = action("FIZZL_TRADE_SETUPS");
 const CHECK = action("FIZZL_CHECK_WALLET_APPROVALS");
 const EXPLAIN = action("FIZZL_EXPLAIN_APPROVAL");
 const DOCTOR = action("FIZZL_DIAGNOSE_X402");
@@ -259,7 +260,7 @@ test("provider lists the tools, prices and paying wallets", async () => {
   assert.equal(out.values.fizzlCanPay, true);
 });
 
-test("Confluence: pays $0.10 on Solana and reports the six votes", async () => {
+test("Confluence: pays $0.15 on Solana and reports the six votes", async () => {
   fx.state.payments.length = 0;
   const { result, replies } = await run(CONFLUENCE, runtimeWith({ SVM_PRIVATE_KEY: sol.secret }), "What do RSI, MACD and the other indicators say for ETH/USDT on the 4h?");
   assert.equal(result.success, true, result.error);
@@ -297,12 +298,13 @@ test("Confluence and levels: triggers, and indicator words are not mistaken for 
 test("services provider lists the new tools with their prices", async () => {
   const { fizzlPlugin } = await import("../dist/index.js");
   const out = await fizzlPlugin.providers[0].get(runtimeWith({}), message(""), {});
-  assert.match(out.text, /FIZZL_CONFLUENCE_SIGNAL: .*\$0\.10/);
+  assert.match(out.text, /FIZZL_CONFLUENCE_SIGNAL: .*\$0\.15/);
   assert.match(out.text, /FIZZL_PRICE_LEVELS: .*\$0\.05/);
-  assert.match(out.text, /FIZZL_MARKET_SCAN: .*\$0\.25/);
+  assert.match(out.text, /FIZZL_MARKET_SCAN: .*\$0\.10/);
+  assert.match(out.text, /FIZZL_TRADE_SETUPS: .*\$0\.50/);
 });
 
-test("Market scan: pays $0.25 on Solana and reports breadth, strongest and weakest", async () => {
+test("Market scan: pays $0.10 on Solana and reports breadth, strongest and weakest", async () => {
   fx.state.payments.length = 0;
   const { result, replies } = await run(SCAN, runtimeWith({ SVM_PRIVATE_KEY: sol.secret }), "Scan the market on the daily: which coins are strongest?");
   assert.equal(result.success, true, result.error);
@@ -325,4 +327,39 @@ test("Market scan: 'which coins are bearish' filters, and needs no pair", async 
   const { parseScanInput } = await import("../dist/index.js");
   assert.deepEqual(parseScanInput("scan all coins"), { interval: "1h" });
   assert.deepEqual(parseScanInput("which coins are bullish on the weekly", {}), { interval: "1w", signal: "bullish" });
+});
+
+test("Trade setups: pays $0.50 on Solana with the default spend cap and lists the ranked plans", async () => {
+  fx.state.payments.length = 0;
+  const { result, replies } = await run(SETUPS, runtimeWith({ SVM_PRIVATE_KEY: sol.secret }), "What should I trade? Show me the best setups.");
+  assert.equal(result.success, true, result.error);
+  assert.deepEqual(fx.state.payments.map((p) => [p.network, p.valid, p.path]), [[SOLANA, true, "/setups?interval=4h"]]);
+  assert.match(replies[0].text, /^Trade setups 4h: 3 in 147 coins \(2 long · 1 short; R\/R ≥ 1\.5\)/);
+  assert.match(replies[0].text, /1\. FIL LONG · entry 1\.1323 · stop 1\.1012 · targets 1\.1993 \/ 1\.2585 · R\/R 2\.15 \(6 of 6 indicators bullish\)/);
+  assert.match(replies[0].text, /3\. JST LONG .*resistance\/support right after the entry/);
+  assert.match(replies[0].text, /Not trade advice/);
+  assert.equal(result.values.bestSetupPair, "FIL-USDT");
+});
+
+test("Trade setups: direction, minimum R/R, top and interval come from the question", async () => {
+  fx.state.payments.length = 0;
+  const { result, replies } = await run(SETUPS, runtimeWith({ EVM_PRIVATE_KEY: evm.secret }), "Top 2 long setups on the 1d with a risk reward of 2 or better");
+  assert.equal(result.success, true, result.error);
+  assert.deepEqual(fx.state.payments.map((p) => [p.network, p.path]), [[BASE, "/setups?interval=1d&direction=long&min_rr=2&top=2"]]);
+  assert.match(replies[0].text, /^Trade setups 1d: 1 in 147 coins \(1 long · 0 short; long only, R\/R ≥ 2\)/);
+  const { parseSetupsInput } = await import("../dist/index.js");
+  assert.deepEqual(parseSetupsInput("what should I trade?"), { interval: "4h" });
+  assert.deepEqual(parseSetupsInput("short setups, rr 3, top 5, 1h"), { interval: "1h", direction: "short", min_rr: 3, top: 5 });
+  const v = (text) => SETUPS.validate(runtimeWith({}), message(text));
+  assert.equal(await v("any good trade ideas?"), true);
+  assert.equal(await v("which coin should I long?"), true);
+  assert.equal(await v("what is the RSI of BTC"), false);
+});
+
+test("spend cap: FIZZL_MAX_PAYMENT_USD below $0.50 refuses trade setups before signing", async () => {
+  fx.state.payments.length = 0;
+  const { result } = await run(SETUPS, runtimeWith({ SVM_PRIVATE_KEY: sol.secret, FIZZL_MAX_PAYMENT_USD: "0.25" }), "best trade setups");
+  assert.equal(result.success, false);
+  assert.match(result.error, /maxAmountPerPayment|spend/i);
+  assert.equal(fx.state.payments.length, 0, "nothing was signed");
 });
