@@ -1,12 +1,12 @@
 import type { Action, ActionResult } from "@elizaos/core";
 import { getContext } from "../context.js";
-import { parseScanInput, parseSignalInput } from "../parse.js";
-import { getConfluenceSignal, getMarketScan, getPriceLevels, type ConfluenceSignal, type MarketScan, type PriceLevels } from "../services.js";
+import { parseScanInput, parseSetupsInput, parseSignalInput } from "../parse.js";
+import { getConfluenceSignal, getMarketScan, getPriceLevels, getTradeSetups, type ConfluenceSignal, type MarketScan, type PriceLevels, type TradeSetups } from "../services.js";
 import { failure, paymentLine } from "./shared.js";
 
 const fmt = (n: number | undefined) => (typeof n === "number" && Number.isFinite(n) ? n.toLocaleString("en-US", { maximumSignificantDigits: 8 }) : "?");
 
-// --- Confluence: six indicators in one call ($0.10) ---
+// --- Confluence: six indicators in one call ($0.15) ---
 
 const CONFLUENCE_TRIGGER = /\b(confluence|indicators?|rsi|macd|bollinger|obv|ema\s*50|ema\s*200|golden cross|death cross|overbought|oversold|technical analysis|all signals)\b/i;
 const NAMES: Record<keyof ConfluenceSignal["indicators"], string> = {
@@ -31,7 +31,7 @@ export const confluenceSignalAction: Action = {
   name: "FIZZL_CONFLUENCE_SIGNAL",
   similes: ["CONFLUENCE_SIGNAL", "TECHNICAL_ANALYSIS", "RSI_MACD", "ALL_INDICATORS", "TRADING_SIGNALS"],
   description:
-    "Six indicators for a crypto pair in one call: Ichimoku, RSI (14), MACD (12/26/9), EMA 50/200, Bollinger Bands and volume (OBV), each with a bullish/bearish/neutral vote, plus a combined signal and confidence (\"4 of 6 indicators bullish\"). Top 200 coins. Paid per call via x402: $0.10 USDC on Solana or Base. Parameters: pair (e.g. SOL-USDT), interval (1m…1M, default 1h).",
+    "Six indicators for a crypto pair in one call: Ichimoku, RSI (14), MACD (12/26/9), EMA 50/200, Bollinger Bands and volume (OBV), each with a bullish/bearish/neutral vote, plus a combined signal and confidence (\"4 of 6 indicators bullish\"). Top 200 coins. Paid per call via x402: $0.15 USDC on Solana or Base. Parameters: pair (e.g. SOL-USDT), interval (1m…1M, default 1h).",
   validate: async (_runtime, message) => {
     const text = message.content?.text ?? "";
     return CONFLUENCE_TRIGGER.test(text) && parseSignalInput(text) !== null;
@@ -109,7 +109,7 @@ export const priceLevelsAction: Action = {
   ],
 };
 
-// --- Market scan: every top-200 coin in one call ($0.25) ---
+// --- Market scan: every top-200 coin in one call ($0.10) ---
 
 const SCAN_TRIGGER = /\b(scan|screener|screen the market|market breadth|market overview|which coins|what coins|all coins|every coin|strongest coins|weakest coins|top movers)\b/i;
 
@@ -127,7 +127,7 @@ export const marketScanAction: Action = {
   name: "FIZZL_MARKET_SCAN",
   similes: ["MARKET_SCAN", "SCAN_MARKET", "CRYPTO_SCREENER", "MARKET_BREADTH", "WHICH_COINS_BULLISH"],
   description:
-    "The Ichimoku Cloud signal for 148 top-200 coins (stablecoins excluded) in one call, sorted from strongest bullish to strongest bearish by the price's distance from the cloud, with market breadth (\"98 of 148 coins bullish\"). Paid per call via x402: $0.25 USDC on Solana or Base. Parameters: interval (1m…1M, default 1h), signal (optional filter: bullish, bearish or neutral).",
+    "The Ichimoku Cloud signal for 148 top-200 coins (stablecoins excluded) in one call, sorted from strongest bullish to strongest bearish by the price's distance from the cloud, with market breadth (\"69 of 147 coins bullish\"). Paid per call via x402: $0.10 USDC on Solana or Base. For ready trade plans across all coins use FIZZL_TRADE_SETUPS. Parameters: interval (1m…1M, default 1h), signal (optional filter: bullish, bearish or neutral).",
   validate: async (_runtime, message) => SCAN_TRIGGER.test(message.content?.text ?? ""),
   handler: async (runtime, message, _state, options, callback): Promise<ActionResult> => {
     const input = parseScanInput(message.content?.text ?? "", (options ?? {}) as Record<string, unknown>);
@@ -147,6 +147,50 @@ export const marketScanAction: Action = {
     [
       { name: "{{user}}", content: { text: "Scan the market on the 1d: which coins are strongest?" } },
       { name: "{{agent}}", content: { text: "Market scan 1d: 104 of 144 coins bullish (104 bullish · 12 neutral · 28 bearish)\nStrongest: BP +29.99% · USELESS +28.59% · NEAR +28.52% · DRV +25.41% · RAY +24.13%\nWeakest: SPX -50.99% · KAG -17.52% · RAIN -13.34% · LEO -4.869% · ASTER -4.594%\n% = price distance above (+) or below (−) the Ichimoku cloud. Not trade advice.", actions: ["FIZZL_MARKET_SCAN"] } },
+    ],
+  ],
+};
+
+// --- Trade setups: the whole market, ranked, with entry, stop and targets ($0.50) ---
+
+const SETUPS_TRIGGER = /\b(trade setups?|setups?|trade ideas?|trading opportunit(?:y|ies)|best trades?|what (?:should|can|could) i (?:trade|buy|long|short)|which coins? (?:should|can|could|to) (?:i )?(?:trade|buy|long|short)|coins? to (?:trade|long|short))\b/i;
+
+const setupLine = (s: TradeSetups["setups"][number]) =>
+  `${s.rank}. ${s.pair.replace(/-USDT$/, "")} ${s.direction.toUpperCase()} · entry ${fmt(s.entry)} · stop ${fmt(s.stop)} · targets ${fmt(s.target_1)} / ${fmt(s.target_2)} · R/R ${fmt(s.risk_reward_1)} (${s.signal_from}${s.warning ? "; resistance/support right after the entry" : ""})`;
+
+export function formatSetups(t: TradeSetups): string {
+  const f = t.filters;
+  const which = [f.direction !== "both" && `${f.direction} only`, `R/R ≥ ${fmt(f.min_risk_reward)}`].filter(Boolean).join(", ");
+  const head = `Trade setups ${t.interval}: ${t.setups_found} in ${t.coins_scanned} coins (${t.summary.long} long · ${t.summary.short} short; ${which})`;
+  const lines = t.setups.length ? t.setups.map(setupLine) : ["No setup matches right now. Try a lower minimum R/R or another interval."];
+  return [head, ...lines, "Ranked by signal strength × risk/reward, lower for high volatility and nearby support/resistance. Not trade advice."].join("\n");
+}
+
+export const tradeSetupsAction: Action = {
+  name: "FIZZL_TRADE_SETUPS",
+  similes: ["TRADE_SETUPS", "TRADE_IDEAS", "WHAT_TO_TRADE", "BEST_TRADES", "RANKED_SETUPS"],
+  description:
+    "Which crypto coins have a trade setup right now: for 148 top-200 coins, the six-indicator confluence signal (Ichimoku, RSI, MACD, EMA 50/200, Bollinger, volume) plus a trade plan in that direction (entry, stop, two take profit targets, risk/reward), ranked best first. Levels from price history, not trade advice. Paid per call via x402: $0.50 USDC on Solana or Base. Parameters: interval (1m…1M, default 4h), direction (long or short, optional), min_rr (minimum risk/reward, default 1.5), top (how many, default 10).",
+  validate: async (_runtime, message) => SETUPS_TRIGGER.test(message.content?.text ?? ""),
+  handler: async (runtime, message, _state, options, callback): Promise<ActionResult> => {
+    const input = parseSetupsInput(message.content?.text ?? "", (options ?? {}) as Record<string, unknown>);
+    const { client, urls } = await getContext(runtime);
+    const result = await getTradeSetups(client, urls, input);
+    if (!result.ok || !result.data) return failure(callback, `Could not get the trade setups: ${result.error}`);
+    const text = `${formatSetups(result.data)}${paymentLine(result.payment)}`;
+    await callback?.({ text, actions: ["FIZZL_TRADE_SETUPS"], source: message.content?.source });
+    const best = result.data.setups[0];
+    return {
+      success: true,
+      text,
+      values: { setupsFound: result.data.setups_found, setupsInterval: result.data.interval, bestSetupPair: best?.pair, bestSetupDirection: best?.direction },
+      data: { setups: result.data, payment: result.payment },
+    };
+  },
+  examples: [
+    [
+      { name: "{{user}}", content: { text: "What should I trade on the 4h? Give me the top 3 setups." } },
+      { name: "{{agent}}", content: { text: "Trade setups 4h: 44 in 147 coins (31 long · 13 short; R/R ≥ 1.5)\n1. FIL LONG · entry 1.1323 · stop 1.1012 · targets 1.1993 / 1.2585 · R/R 2.15 (6 of 6 indicators bullish)\n2. KMNO LONG · entry 0.04987 · stop 0.048255 · targets 0.053802 / 0.055767 · R/R 2.43 (6 of 6 indicators bullish)\n3. JST LONG · entry 0.12271 · stop 0.12146 · targets 0.12517 / 0.12759 · R/R 1.97 (6 of 6 indicators bullish; resistance/support right after the entry)\nRanked by signal strength × risk/reward, lower for high volatility and nearby support/resistance. Not trade advice.", actions: ["FIZZL_TRADE_SETUPS"] } },
     ],
   ],
 };

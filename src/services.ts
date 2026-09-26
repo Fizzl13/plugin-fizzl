@@ -1,7 +1,7 @@
 // Typed calls to each paid endpoint.
 
 import type { FizzlClient, PaidResult } from "./client.js";
-import type { DiagnoseInput, EvmChain, PreflightInput, PresignInput, SignalInput, WalletInput } from "./parse.js";
+import type { DiagnoseInput, EvmChain, PreflightInput, PresignInput, SetupsInput, SignalInput, WalletInput } from "./parse.js";
 
 export interface IchimokuSignal {
   pair: string;
@@ -89,6 +89,38 @@ export interface MarketScan {
 }
 
 export interface ScanInput { interval: string; signal?: "bullish" | "bearish" | "neutral" }
+
+export interface TradeSetup {
+  rank: number;
+  rank_score: number;
+  pair: string;
+  direction: "long" | "short";
+  confidence: "high" | "medium" | "low";
+  signal_from: string;
+  entry: number;
+  stop: number;
+  target_1: number;
+  target_2: number;
+  risk_reward_1: number;
+  risk_reward_2: number;
+  stop_basis: string;
+  obstacle_before_target: number | null;
+  warning?: string;
+  atr_percent: number;
+  volume_24h_usd: number;
+  exchange: string;
+}
+
+export interface TradeSetups {
+  interval: string;
+  timestamp: string;
+  coins_scanned: number;
+  filters: { direction: "long" | "short" | "both"; min_risk_reward: number; top: number };
+  setups_found: number;
+  summary: { long: number; short: number; neutral_coins: number };
+  setups: TradeSetup[];
+  note: string;
+}
 
 export interface ApprovalVerdict {
   verdict: "SAFE" | "CAUTION" | "RISK";
@@ -182,6 +214,14 @@ export function getPriceLevels(client: FizzlClient, urls: ServiceUrls, input: Si
 export function getMarketScan(client: FizzlClient, urls: ServiceUrls, input: ScanInput): Promise<PaidResult<MarketScan>> {
   const query = new URLSearchParams({ interval: input.interval, ...(input.signal ? { signal: input.signal } : {}) });
   return client.request<MarketScan>(`${trim(urls.ichimoku)}/scan?${query}`);
+}
+
+export function getTradeSetups(client: FizzlClient, urls: ServiceUrls, input: SetupsInput): Promise<PaidResult<TradeSetups>> {
+  const query = new URLSearchParams({ interval: input.interval });
+  if (input.direction) query.set("direction", input.direction);
+  if (input.min_rr !== undefined) query.set("min_rr", String(input.min_rr));
+  if (input.top !== undefined) query.set("top", String(input.top));
+  return client.request<TradeSetups>(`${trim(urls.ichimoku)}/setups?${query}`);
 }
 
 export function checkWalletApprovals(client: FizzlClient, urls: ServiceUrls, input: WalletInput): Promise<PaidResult<ApprovalVerdict>> {

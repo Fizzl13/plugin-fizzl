@@ -79,8 +79,9 @@ export class FizzlClient {
     }
     if (networks.length === 0) return new FizzlClient(null, wallets);
 
-    const cap = Number(config.maxPaymentUsd ?? "0.25");
-    client.setSpendControls({ maxAmountPerPayment: `$${Number.isFinite(cap) && cap > 0 ? cap : 0.25}` });
+    // Default: the highest Fizzl price (trade setups, $0.50).
+    const cap = Number(config.maxPaymentUsd ?? "0.50");
+    client.setSpendControls({ maxAmountPerPayment: `$${Number.isFinite(cap) && cap > 0 ? cap : 0.5}` });
     return new FizzlClient(wrapFetchWithPayment(baseFetch, client), wallets);
   }
 

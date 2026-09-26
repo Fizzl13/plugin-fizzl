@@ -6,11 +6,18 @@
 
 ▶ [Watch the 39-second video](https://ichimoku-signal.onrender.com/media/plugin.mp4): install, then an agent answers "which coins are bullish on the 4h?" and "where would the stop go?", paying per call.
 
-ElizaOS plugin that gives your agent 9 paid tools for crypto: trading signals, a market scan of 148 coins,
-price levels with stop and targets, and safety checks before it signs or pays. Your agent pays per call in USDC on
+ElizaOS plugin that gives your agent 10 paid tools for crypto: ranked trade setups across 148 coins, trading signals,
+a market scan, price levels with stop and targets, and safety checks before it signs or pays. Your agent pays per call in USDC on
 Solana or Base over x402: no API keys, no accounts, no subscriptions.
 
 ```text
+You:   What should I trade on the 4h? Top 3.
+Agent: Trade setups 4h: 44 in 147 coins (31 long · 13 short; R/R ≥ 1.5)
+       1. FIL LONG · entry 1.1323 · stop 1.1012 · targets 1.1993 / 1.2585 · R/R 2.15 (6 of 6 indicators bullish)
+       2. KMNO LONG · entry 0.04987 · stop 0.048255 · targets 0.053802 / 0.055767 · R/R 2.43 (6 of 6 indicators bullish)
+       3. JST LONG · entry 0.12271 · stop 0.12146 · targets 0.12517 / 0.12759 · R/R 1.97 (6 of 6 indicators bullish; …)
+       Paid via x402: https://solscan.io/tx/…
+
 You:   Which coins are bullish on the 4h?
 Agent: Market scan 4h: 98 of 148 coins bullish (98 bullish · 21 neutral · 29 bearish)
        Bullish (98): QNT +18.8% · XPL +16.1% · BP +15.7% · ONDO +14.1% · USELESS +8.94% · …
@@ -20,10 +27,11 @@ Agent: Market scan 4h: 98 of 148 coins bullish (98 bullish · 21 neutral · 29 b
 
 | Action | Service | What it does | Price | Pays on |
 |--------|---------|--------------|-------|---------|
+| `FIZZL_TRADE_SETUPS` | [Ichimoku Signal](https://ichimoku-signal.onrender.com) | Which coins have a trade setup now: for 148 top-200 coins the six-indicator signal plus entry, stop, two targets and risk/reward, ranked best first; "long only", "R/R 2", "top 5" and the interval come from the question (default 4h) | $0.50 | Solana or Base |
 | `FIZZL_ICHIMOKU_SIGNAL` | [Ichimoku Signal](https://ichimoku-signal.onrender.com) | Live Ichimoku Cloud signal for a crypto pair: bullish/bearish/neutral, cloud position, tenkan/kijun cross and all line values | $0.02 | Solana or Base |
-| `FIZZL_CONFLUENCE_SIGNAL` | [Ichimoku Signal](https://ichimoku-signal.onrender.com) | Six indicators in one call (Ichimoku, RSI, MACD, EMA 50/200, Bollinger, volume), each with a vote, plus a combined signal and confidence | $0.10 | Solana or Base |
+| `FIZZL_CONFLUENCE_SIGNAL` | [Ichimoku Signal](https://ichimoku-signal.onrender.com) | Six indicators in one call (Ichimoku, RSI, MACD, EMA 50/200, Bollinger, volume), each with a vote, plus a combined signal and confidence | $0.15 | Solana or Base |
 | `FIZZL_PRICE_LEVELS` | [Ichimoku Signal](https://ichimoku-signal.onrender.com) | Support/resistance, ATR, and a long/short plan with stop, two targets and risk/reward (levels, not advice) | $0.05 | Solana or Base |
-| `FIZZL_MARKET_SCAN` | [Ichimoku Signal](https://ichimoku-signal.onrender.com) | The Ichimoku signal for 148 top-200 coins at once, strongest bullish first, with market breadth; "which coins are bearish" filters | $0.25 | Solana or Base |
+| `FIZZL_MARKET_SCAN` | [Ichimoku Signal](https://ichimoku-signal.onrender.com) | The Ichimoku signal for 148 top-200 coins at once, strongest bullish first, with market breadth; "which coins are bearish" filters | $0.10 | Solana or Base |
 | `FIZZL_CHECK_WALLET_APPROVALS` | [PlainText](https://smartcontractexplainer.onrender.com) | Checks an EVM wallet's live token/NFT approvals and explains the risk: SAFE / CAUTION / RISK | $0.10 | Solana or Base |
 | `FIZZL_EXPLAIN_APPROVAL` | [PlainText](https://smartcontractexplainer.onrender.com) | Explains a pasted approval/permission JSON in plain language with a verdict | $0.05 | Solana or Base |
 | `FIZZL_PREFLIGHT_X402` | [x402 Doctor](https://x402-doctor.onrender.com) | Before paying an unknown x402 endpoint: GO / CAUTION / NO-GO, the recommended payment option and why (would not settle, over your budget, charges more than advertised, not HTTPS, unknown token). Never pays the endpoint itself | $0.001 | Solana or Base |
@@ -59,7 +67,7 @@ export const character = {
 |---------|----------|---------|---------|
 | `SVM_PRIVATE_KEY` | for Solana | – | Solana secret key (base58 export, or the CLI's JSON byte array) with USDC. No SOL needed: the facilitator pays the fee. |
 | `EVM_PRIVATE_KEY` | for Base | – | EVM private key (`0x…`) with USDC on Base. No ETH needed: payments are gasless EIP-3009 signatures. |
-| `FIZZL_MAX_PAYMENT_USD` | no | `0.25` | The agent refuses any single payment above this. |
+| `FIZZL_MAX_PAYMENT_USD` | no | `0.50` | The agent refuses any single payment above this (trade setups cost $0.50; set `0.25` to allow everything else). |
 | `SOLANA_RPC_URL` | no | public mainnet RPC | RPC used to build Solana payments; the public one rate-limits. |
 | `ICHIMOKU_SIGNAL_URL`, `PLAINTEXT_URL`, `X402_DOCTOR_URL`, `PRESIGN_GUARD_URL` | no | live services | Point at another deployment. |
 
