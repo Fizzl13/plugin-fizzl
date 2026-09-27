@@ -5,9 +5,11 @@
 // a verdict: a changed, unsigned or foreign answer, or one for another
 // request, is reported as untrusted instead of used.
 //
-// Canonical JSON: keys sorted at every level, no whitespace, non-ASCII as
-// \uXXXX (the same bytes as Python's json.dumps(sort_keys=True,
-// separators=(",", ":"), ensure_ascii=True)).
+// Canonical JSON (profile js-json-stringify-sorted-utf16-ascii-v1): keys
+// sorted by UTF-16 code units at every level, no whitespace, every code unit
+// from U+007F up as lowercase \uXXXX, numbers as JSON.stringify writes them,
+// UTF-8 bytes. Python's json.dumps matches only for ASCII keys and integers; a
+// Python equivalent: github.com/Fizzl13/presign-guard/blob/main/examples/canonical.py
 
 import { createHash } from "node:crypto";
 import { recoverMessageAddress, type Hex } from "viem";
