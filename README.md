@@ -71,7 +71,8 @@ export const character = {
 | `SOLANA_RPC_URL` | no | public mainnet RPC | RPC used to build Solana payments; the public one rate-limits. |
 | `ICHIMOKU_SIGNAL_URL`, `PLAINTEXT_URL`, `X402_DOCTOR_URL`, `PRESIGN_GUARD_URL` | no | live services | Point at another deployment. |
 | `FIZZL_VERIFY_RECEIPTS` | no | `require` | Check the signed receipt on every x402 Doctor and presign-guard answer; `off` skips it. |
-| `FIZZL_DOCTOR_SIGNERS`, `FIZZL_PRESIGN_SIGNERS` | no | the published signers | Comma-separated accepted signer addresses (another deployment, or a key rotation). |
+| `FIZZL_DOCTOR_SIGNERS`, `FIZZL_PRESIGN_SIGNERS` | no | the published signers | Comma-separated pinned signer addresses (for another deployment). |
+| `FIZZL_RECEIPT_AUTHORITY` | no | the Fizzl payout wallet | Wallet whose certificates also make a signer trusted, so a rotated key keeps working; `none` accepts only the pinned signers. |
 
 With both keys configured, services that accept both are paid on Solana. presign-guard is paid on Base only, so it
 needs `EVM_PRIVATE_KEY`. Use a **dedicated wallet** holding only what the agent may
@@ -83,6 +84,8 @@ x402 Doctor and presign-guard sign every paid answer (EIP-191 over canonical JSO
 
 - signed by the service's published signer, pinned in the plugin: x402 Doctor `0xAaE66eF9Ee234397df33901568c8FBc36d43277d`, presign-guard `0xf084Ea47Ca4D99BB4De3ECB0332b316bE6521EaE`;
 - for exactly the request the agent sent (endpoint and budget, or the transaction or signature to check).
+
+**Key rotation:** a service can change its signing key without a plugin update. The Fizzl payout wallet (`0x6B0F4651eD42893ab58139938175E4a69f175F25`, the `payTo` of every payment) certifies each key, and the certificate travels inside the receipt; the plugin accepts a key that is pinned or certified for that service.
 
 A valid answer ends with "Signed by x402 Doctor ✓" (or presign-guard). A changed, unsigned or foreign answer, or one for another request, is not used: the action fails with "Do not pay on it" or "Do not sign until it can be checked".
 
