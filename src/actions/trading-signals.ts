@@ -156,21 +156,21 @@ export const marketScanAction: Action = {
 const SETUPS_TRIGGER = /\b(trade setups?|setups?|trade ideas?|trading opportunit(?:y|ies)|best trades?|what (?:should|can|could) i (?:trade|buy|long|short)|which coins? (?:should|can|could|to) (?:i )?(?:trade|buy|long|short)|coins? to (?:trade|long|short))\b/i;
 
 const setupLine = (s: TradeSetups["setups"][number]) =>
-  `${s.rank}. ${s.pair.replace(/-USDT$/, "")} ${s.direction.toUpperCase()} · entry ${fmt(s.entry)} · stop ${fmt(s.stop)} · targets ${fmt(s.target_1)} / ${fmt(s.target_2)} · R/R ${fmt(s.risk_reward_1)} (${s.signal_from}${s.warning ? "; resistance/support right after the entry" : ""})`;
+  `${s.rank}. ${s.pair.replace(/-USDT$/, "")} ${s.direction.toUpperCase()} · entry ${fmt(s.entry)} · stop ${fmt(s.stop)} · targets ${fmt(s.target_1)} / ${fmt(s.target_2)} · R/R ${fmt(s.risk_reward_1)}${s.liquidity_rank ? ` · liquidity #${s.liquidity_rank}` : ""} (${s.signal_from}${s.warning ? "; resistance/support right after the entry" : ""})`;
 
 export function formatSetups(t: TradeSetups): string {
   const f = t.filters;
-  const which = [f.direction !== "both" && `${f.direction} only`, `R/R ≥ ${fmt(f.min_risk_reward)}`].filter(Boolean).join(", ");
+  const which = [f.direction !== "both" && `${f.direction} only`, `R/R ≥ ${fmt(f.min_risk_reward)}`, f.liquid_top && `${f.liquid_top} most traded coins`].filter(Boolean).join(", ");
   const head = `Trade setups ${t.interval}: ${t.setups_found} in ${t.coins_scanned} coins (${t.summary.long} long · ${t.summary.short} short; ${which})`;
   const lines = t.setups.length ? t.setups.map(setupLine) : ["No setup matches right now. Try a lower minimum R/R or another interval."];
-  return [head, ...lines, "Ranked by signal strength × risk/reward, lower for high volatility and nearby support/resistance. Not trade advice."].join("\n");
+  return [head, ...lines, "Ranked by signal strength × risk/reward, lower for high volatility, nearby support/resistance and thinly traded coins (liquidity # = rank by global trading volume). Not trade advice."].join("\n");
 }
 
 export const tradeSetupsAction: Action = {
   name: "FIZZL_TRADE_SETUPS",
   similes: ["TRADE_SETUPS", "TRADE_IDEAS", "WHAT_TO_TRADE", "BEST_TRADES", "RANKED_SETUPS"],
   description:
-    "Which crypto coins have a trade setup right now: for 148 top-200 coins, the six-indicator confluence signal (Ichimoku, RSI, MACD, EMA 50/200, Bollinger, volume) plus a trade plan in that direction (entry, stop, two take profit targets, risk/reward), ranked best first. Levels from price history, not trade advice. Paid per call via x402: $0.50 USDC on Solana or Base. Parameters: interval (1m…1M, default 4h), direction (long or short, optional), min_rr (minimum risk/reward, default 1.5), top (how many, default 10).",
+    "Which crypto coins have a trade setup right now: for 148 top-200 coins, the six-indicator confluence signal (Ichimoku, RSI, MACD, EMA 50/200, Bollinger, volume) plus a trade plan in that direction (entry, stop, two take profit targets, risk/reward), ranked best first. Levels from price history, not trade advice. Paid per call via x402: $0.50 USDC on Solana or Base. Parameters: interval (1m…1M, default 4h), direction (long or short, optional), min_rr (minimum risk/reward, default 1.5), top (how many, default 10), liquid_top (only the N most traded coins by global volume, e.g. 30; 'liquid setups' sets 30).",
   validate: async (_runtime, message) => SETUPS_TRIGGER.test(message.content?.text ?? ""),
   handler: async (runtime, message, _state, options, callback): Promise<ActionResult> => {
     const input = parseSetupsInput(message.content?.text ?? "", (options ?? {}) as Record<string, unknown>);
