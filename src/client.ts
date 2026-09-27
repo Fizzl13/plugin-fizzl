@@ -28,6 +28,8 @@ export interface PaidResult<T> {
   error?: string;
   /** Settlement transaction and network, when the payment went through. */
   payment?: { network: string; transaction: string; explorer?: string };
+  /** What was asked, as the service signs it in its receipt (route and input). */
+  request?: { route: string; input: unknown };
 }
 
 function explorerUrl(network: string, tx: string): string | undefined {

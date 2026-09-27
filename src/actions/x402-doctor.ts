@@ -2,7 +2,7 @@ import type { Action, ActionResult } from "@elizaos/core";
 import { getContext } from "../context.js";
 import { parseDiagnoseInput, parsePreflightInput } from "../parse.js";
 import { diagnoseX402, preflightX402, type Diagnosis, type Preflight } from "../services.js";
-import { failure, paymentLine } from "./shared.js";
+import { failure, paymentLine, receiptCheck } from "./shared.js";
 
 const TRIGGER = /\b(x402|402|paywall|payment[- ]required|paid (?:api|endpoint))\b/i;
 const ASK = /\b(diagnos\w*|check\w*|debug\w*|test\w*|broken|work(?:s|ing)?|why|fix|doctor|validat\w*|audit\w*)\b/i;
@@ -50,11 +50,14 @@ export const diagnoseX402Action: Action = {
     const input = parseDiagnoseInput(message.content?.text ?? "", (options ?? {}) as Record<string, unknown>);
     if (!input) return failure(callback, "Send the URL of the x402 endpoint to diagnose (https://…).");
 
-    const { client, urls } = await getContext(runtime);
+    const ctx = await getContext(runtime);
+    const { client, urls } = ctx;
     const result = await diagnoseX402(client, urls, input);
     if (!result.ok || !result.data) return failure(callback, `Could not diagnose ${input.url}: ${result.error}`);
+    const signed = await receiptCheck(ctx, "doctor", result);
+    if (!signed.ok) return failure(callback, `Got a diagnosis for ${input.url}, but ${signed.reason}. Not using it.`);
 
-    const text = `${formatDiagnosis(result.data)}${paymentLine(result.payment)}`;
+    const text = `${formatDiagnosis(result.data)}${signed.line}${paymentLine(result.payment)}`;
     await callback?.({ text, actions: ["FIZZL_DIAGNOSE_X402"], source: message.content?.source });
     return {
       success: true,
@@ -84,11 +87,14 @@ export const preflightX402Action: Action = {
     const input = parsePreflightInput(message.content?.text ?? "", (options ?? {}) as Record<string, unknown>);
     if (!input) return failure(callback, "Send the URL of the x402 endpoint you want to pay (https://…), optionally with a budget like max $0.05.");
 
-    const { client, urls } = await getContext(runtime);
+    const ctx = await getContext(runtime);
+    const { client, urls } = ctx;
     const result = await preflightX402(client, urls, input);
     if (!result.ok || !result.data) return failure(callback, `Could not check ${input.url}: ${result.error}`);
+    const signed = await receiptCheck(ctx, "doctor", result);
+    if (!signed.ok) return failure(callback, `Got a verdict for ${input.url}, but ${signed.reason}. Do not pay on it.`);
 
-    const text = `${formatPreflight(result.data)}${paymentLine(result.payment)}`;
+    const text = `${formatPreflight(result.data)}${signed.line}${paymentLine(result.payment)}`;
     await callback?.({ text, actions: ["FIZZL_PREFLIGHT_X402"], source: message.content?.source });
     return {
       success: true,

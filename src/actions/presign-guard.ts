@@ -2,7 +2,7 @@ import type { Action, ActionResult } from "@elizaos/core";
 import { getContext } from "../context.js";
 import { parsePresignInput } from "../parse.js";
 import { presignCheck, type PresignVerdict } from "../services.js";
-import { failure, paymentLine } from "./shared.js";
+import { failure, paymentLine, receiptCheck } from "./shared.js";
 
 const ASK = /\b(sign\w*|safe|risky?|check\w*|approv\w*|permit\w*|transaction|tx|drain\w*|phish\w*|scam\w*)\b/i;
 const VERDICT = {
@@ -34,14 +34,17 @@ export const presignCheckAction: Action = {
     const input = parsePresignInput(message.content?.text ?? "", (options ?? {}) as Record<string, unknown>);
     if (!input) return failure(callback, "Send what you are about to sign: the EIP-712 typed data, or the transaction { to, data, value, chainId }.");
 
-    const { client, urls } = await getContext(runtime);
+    const ctx = await getContext(runtime);
+    const { client, urls } = ctx;
     if (client.canPay && !client.wallets.base) {
       return failure(callback, "presign-guard is paid in USDC on Base only. Set EVM_PRIVATE_KEY to a Base wallet with a little USDC.");
     }
     const result = await presignCheck(client, urls, input);
     if (!result.ok || !result.data) return failure(callback, `Could not check this before signing: ${result.error}. Do not sign until it can be checked.`);
+    const signed = await receiptCheck(ctx, "presign", result);
+    if (!signed.ok) return failure(callback, `Got a verdict, but ${signed.reason}. Do not sign until it can be checked.`);
 
-    const text = `${formatPresign(result.data)}${paymentLine(result.payment)}`;
+    const text = `${formatPresign(result.data)}${signed.line}${paymentLine(result.payment)}`;
     await callback?.({ text, actions: ["FIZZL_PRESIGN_CHECK"], source: message.content?.source });
     return {
       success: true,
