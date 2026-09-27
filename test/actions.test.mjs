@@ -341,6 +341,13 @@ test("Trade setups: pays $0.50 on Solana with the default spend cap and lists th
   assert.equal(result.values.bestSetupPair, "FIL-USDT");
 });
 
+test("Trade setups: \"liquid\" asks for the 30 most traded coins", async () => {
+  fx.state.payments.length = 0;
+  const { result } = await run(SETUPS, runtimeWith({ EVM_PRIVATE_KEY: evm.secret }), "Show me liquid setups only");
+  assert.equal(result.success, true, result.error);
+  assert.deepEqual(fx.state.payments.map((p) => p.path), ["/setups?interval=4h&liquid_top=30"]);
+});
+
 test("Trade setups: direction, minimum R/R, top and interval come from the question", async () => {
   fx.state.payments.length = 0;
   const { result, replies } = await run(SETUPS, runtimeWith({ EVM_PRIVATE_KEY: evm.secret }), "Top 2 long setups on the 1d with a risk reward of 2 or better");
@@ -350,6 +357,10 @@ test("Trade setups: direction, minimum R/R, top and interval come from the quest
   const { parseSetupsInput } = await import("../dist/index.js");
   assert.deepEqual(parseSetupsInput("what should I trade?"), { interval: "4h" });
   assert.deepEqual(parseSetupsInput("short setups, rr 3, top 5, 1h"), { interval: "1h", direction: "short", min_rr: 3, top: 5 });
+  assert.deepEqual(parseSetupsInput("liquid setups"), { interval: "4h", liquid_top: 30 });
+  assert.deepEqual(parseSetupsInput("setups in the 50 most traded coins, top 3"), { interval: "4h", top: 3, liquid_top: 50 });
+  assert.deepEqual(parseSetupsInput("what should I trade?", { liquid_top: 20 }), { interval: "4h", liquid_top: 20 });
+  assert.deepEqual(parseSetupsInput("setups", { liquid_top: 500 }), { interval: "4h" }, "out of range is dropped");
   const v = (text) => SETUPS.validate(runtimeWith({}), message(text));
   assert.equal(await v("any good trade ideas?"), true);
   assert.equal(await v("which coin should I long?"), true);

@@ -108,6 +108,8 @@ export interface TradeSetup {
   warning?: string;
   atr_percent: number;
   volume_24h_usd: number;
+  liquidity_rank?: number;
+  liquidity_usd_daily?: number;
   exchange: string;
 }
 
@@ -115,7 +117,8 @@ export interface TradeSetups {
   interval: string;
   timestamp: string;
   coins_scanned: number;
-  filters: { direction: "long" | "short" | "both"; min_risk_reward: number; top: number };
+  filters: { direction: "long" | "short" | "both"; min_risk_reward: number; top: number; liquid_top?: number };
+  liquidity_source?: "coingecko_global_24h" | "exchange_30d_median";
   setups_found: number;
   summary: { long: number; short: number; neutral_coins: number };
   setups: TradeSetup[];
@@ -221,6 +224,7 @@ export function getTradeSetups(client: FizzlClient, urls: ServiceUrls, input: Se
   if (input.direction) query.set("direction", input.direction);
   if (input.min_rr !== undefined) query.set("min_rr", String(input.min_rr));
   if (input.top !== undefined) query.set("top", String(input.top));
+  if (input.liquid_top !== undefined) query.set("liquid_top", String(input.liquid_top));
   return client.request<TradeSetups>(`${trim(urls.ichimoku)}/setups?${query}`);
 }
 

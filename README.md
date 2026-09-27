@@ -27,7 +27,7 @@ Agent: Market scan 4h: 98 of 148 coins bullish (98 bullish · 21 neutral · 29 b
 
 | Action | Service | What it does | Price | Pays on |
 |--------|---------|--------------|-------|---------|
-| `FIZZL_TRADE_SETUPS` | [Ichimoku Signal](https://ichimoku-signal.onrender.com) | Which coins have a trade setup now: for 148 top-200 coins the six-indicator signal plus entry, stop, two targets and risk/reward, ranked best first; "long only", "R/R 2", "top 5" and the interval come from the question (default 4h) | $0.50 | Solana or Base |
+| `FIZZL_TRADE_SETUPS` | [Ichimoku Signal](https://ichimoku-signal.onrender.com) | Which coins have a trade setup now: for 148 top-200 coins the six-indicator signal plus entry, stop, two targets and risk/reward, ranked best first, with each coin's liquidity rank by global trading volume (thin coins rank lower); "long only", "R/R 2", "top 5", "liquid" (the 30 most traded coins) or "50 most traded" and the interval come from the question (default 4h) | $0.50 | Solana or Base |
 | `FIZZL_ICHIMOKU_SIGNAL` | [Ichimoku Signal](https://ichimoku-signal.onrender.com) | Live Ichimoku Cloud signal for a crypto pair: bullish/bearish/neutral, cloud position, tenkan/kijun cross and all line values | $0.02 | Solana or Base |
 | `FIZZL_CONFLUENCE_SIGNAL` | [Ichimoku Signal](https://ichimoku-signal.onrender.com) | Six indicators in one call (Ichimoku, RSI, MACD, EMA 50/200, Bollinger, volume), each with a vote, plus a combined signal and confidence | $0.15 | Solana or Base |
 | `FIZZL_PRICE_LEVELS` | [Ichimoku Signal](https://ichimoku-signal.onrender.com) | Support/resistance, ATR, and a long/short plan with stop, two targets and risk/reward (levels, not advice) | $0.05 | Solana or Base |

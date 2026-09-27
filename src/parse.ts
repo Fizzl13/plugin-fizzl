@@ -63,10 +63,12 @@ export function parseScanInput(text: string, options: Record<string, unknown> = 
   return signal ? { interval, signal } : { interval };
 }
 
-export interface SetupsInput { interval: string; direction?: "long" | "short"; min_rr?: number; top?: number }
+export interface SetupsInput { interval: string; direction?: "long" | "short"; min_rr?: number; top?: number; liquid_top?: number }
 
 // "best long setups on the 1d, R/R 2 or better, top 5" → { interval: "1d", direction: "long", min_rr: 2, top: 5 }
 // "what should I trade?"                               → { interval: "4h" }
+// "liquid setups" / "only the most traded coins"       → { interval: "4h", liquid_top: 30 }
+// "setups in the 50 most traded coins"                 → { interval: "4h", liquid_top: 50 }
 export function parseSetupsInput(text: string, options: Record<string, unknown> = {}): SetupsInput {
   const interval = typeof options.interval === "string" && (INTERVALS as readonly string[]).includes(options.interval)
     ? options.interval
@@ -78,6 +80,11 @@ export function parseSetupsInput(text: string, options: Record<string, unknown> 
   if (Number.isFinite(rr) && rr >= 1 && rr <= 10) out.min_rr = rr;
   const top = typeof options.top === "number" ? options.top : Number(/\btop\s*(\d{1,2})\b/i.exec(text)?.[1]);
   if (Number.isInteger(top) && top >= 1 && top <= 50) out.top = top;
+  const liquidN = Number(/\b(\d{1,3})\s+most\s+(?:liquid|traded)\b/i.exec(text)?.[1]);
+  const liquid = typeof options.liquid_top === "number" ? options.liquid_top
+    : Number.isInteger(liquidN) ? liquidN
+    : /\b(liquid|most traded|high[\s-]volume)\b/i.test(text) ? 30 : undefined;
+  if (Number.isInteger(liquid) && (liquid as number) >= 1 && (liquid as number) <= 200) out.liquid_top = liquid;
   return out;
 }
 
