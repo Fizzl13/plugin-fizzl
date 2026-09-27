@@ -70,10 +70,21 @@ export const character = {
 | `FIZZL_MAX_PAYMENT_USD` | no | `0.50` | The agent refuses any single payment above this (trade setups cost $0.50; set `0.25` to allow everything else). |
 | `SOLANA_RPC_URL` | no | public mainnet RPC | RPC used to build Solana payments; the public one rate-limits. |
 | `ICHIMOKU_SIGNAL_URL`, `PLAINTEXT_URL`, `X402_DOCTOR_URL`, `PRESIGN_GUARD_URL` | no | live services | Point at another deployment. |
+| `FIZZL_VERIFY_RECEIPTS` | no | `require` | Check the signed receipt on every x402 Doctor and presign-guard answer; `off` skips it. |
+| `FIZZL_DOCTOR_SIGNERS`, `FIZZL_PRESIGN_SIGNERS` | no | the published signers | Comma-separated accepted signer addresses (another deployment, or a key rotation). |
 
 With both keys configured, services that accept both are paid on Solana. presign-guard is paid on Base only, so it
 needs `EVM_PRIVATE_KEY`. Use a **dedicated wallet** holding only what the agent may
 spend; the spend cap limits a single payment, not the total.
+
+## Signed verdicts
+
+x402 Doctor and presign-guard sign every paid answer (EIP-191 over canonical JSON, with the request inside the signed body). The preflight, diagnose and presign actions check that signature before the agent uses the verdict:
+
+- signed by the service's published signer, pinned in the plugin: x402 Doctor `0xAaE66eF9Ee234397df33901568c8FBc36d43277d`, presign-guard `0xf084Ea47Ca4D99BB4De3ECB0332b316bE6521EaE`;
+- for exactly the request the agent sent (endpoint and budget, or the transaction or signature to check).
+
+A valid answer ends with "Signed by x402 Doctor ✓" (or presign-guard). A changed, unsigned or foreign answer, or one for another request, is not used: the action fails with "Do not pay on it" or "Do not sign until it can be checked".
 
 ## What the agent understands
 

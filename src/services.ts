@@ -246,7 +246,8 @@ export function explainApproval(client: FizzlClient, urls: ServiceUrls, data: Re
 
 export function diagnoseX402(client: FizzlClient, urls: ServiceUrls, input: DiagnoseInput): Promise<PaidResult<Diagnosis>> {
   const query = new URLSearchParams({ url: input.url, ...(input.method ? { method: input.method } : {}) });
-  return client.request<Diagnosis>(`${trim(urls.doctor)}/api/v1/diagnose?${query}`);
+  return client.request<Diagnosis>(`${trim(urls.doctor)}/api/v1/diagnose?${query}`)
+    .then((r) => ({ ...r, request: { route: "GET /api/v1/diagnose", input: Object.fromEntries(query) } }));
 }
 
 export function preflightX402(client: FizzlClient, urls: ServiceUrls, input: PreflightInput): Promise<PaidResult<Preflight>> {
@@ -254,15 +255,17 @@ export function preflightX402(client: FizzlClient, urls: ServiceUrls, input: Pre
   if (input.method) query.set("method", input.method);
   if (input.maxUsd !== undefined) query.set("max_usd", String(input.maxUsd));
   if (input.network) query.set("network", input.network);
-  return client.request<Preflight>(`${trim(urls.doctor)}/api/v1/preflight?${query}`);
+  return client.request<Preflight>(`${trim(urls.doctor)}/api/v1/preflight?${query}`)
+    .then((r) => ({ ...r, request: { route: "GET /api/v1/preflight", input: Object.fromEntries(query) } }));
 }
 
 export function presignCheck(client: FizzlClient, urls: ServiceUrls, input: PresignInput): Promise<PaidResult<PresignVerdict>> {
   const path = input.explain ? "/v1/check/explain" : "/v1/check";
   const body = input.explain ? { ...input.request, lang: input.lang } : input.request;
+  const json = JSON.stringify(body);
   return client.request<PresignVerdict>(`${trim(urls.presign)}${path}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
+    body: json,
+  }).then((r) => ({ ...r, request: { route: `POST ${path}`, input: JSON.parse(json) } }));
 }

@@ -7,6 +7,14 @@ import http from "node:http";
 import * as kit from "@solana/kit";
 import { verifyTypedData } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
+import { canonicalJson, inputHash } from "../dist/receipt.js";
+
+// Stand-ins for Doctor's and presign-guard's signers: answers are signed like the live services sign them.
+export const signerKeys = { doctor: privateKeyToAccount(generatePrivateKey()), presign: privateKeyToAccount(generatePrivateKey()) };
+export async function signAnswer(body, key, route, input) {
+  const receipt = { request_id: "3f2a9c10-0000-4000-8000-000000000000", route, input_sha256: inputHash(route, input), signed_at: "2026-09-27T10:00:00.000Z", signer: key.address, algorithm: "eip191-canonical-json-v1" };
+  return { ...body, receipt: { ...receipt, signature: await key.signMessage({ message: canonicalJson({ ...body, receipt }) }) } };
+}
 
 export const SOLANA = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
 export const BASE = "eip155:8453";
@@ -86,7 +94,7 @@ async function verifyEvmPayment(payload, requirements) {
 }
 
 // A paid route: 402 with the challenge, or verify the payment and answer.
-function paidRoute({ accepts, resourceUrl, respond, state }) {
+function paidRoute({ accepts, resourceUrl, respond, state, sign }) {
   return async (req, res, body) => {
     const header = req.headers["payment-signature"];
     const challenge = { x402Version: 2, error: "Payment required", resource: { url: resourceUrl(req), mimeType: "application/json" }, accepts };
@@ -108,7 +116,11 @@ function paidRoute({ accepts, resourceUrl, respond, state }) {
     const tx = payload.accepted.network === SOLANA ? "5SolanaSettlementTx" : "0xbasesettlementtx";
     res.setHeader("PAYMENT-RESPONSE", b64({ success: true, transaction: tx, network: payload.accepted.network, payer: verdict.payer }));
     res.setHeader("content-type", "application/json");
-    res.end(JSON.stringify(respond(req, body ? JSON.parse(body) : null)));
+    const input = body ? JSON.parse(body) : null;
+    let out = respond(req, input);
+    if (sign) out = await signAnswer(out, sign.key, sign.route(req), sign.input(req, input));
+    if (state.tamper) out = state.tamper(out);
+    res.end(JSON.stringify(out));
   };
 }
 
@@ -261,6 +273,7 @@ export async function startFixtures() {
         accepts: [baseOption("1000"), solanaOption("1000")],
         resourceUrl: (r) => `${doctorUrl}${r.url}`,
         state,
+        sign: { key: signerKeys.doctor, route: () => "GET /api/v1/preflight", input: () => Object.fromEntries(url.searchParams) },
         respond: () => {
           const maxUsd = url.searchParams.get("max_usd");
           const overBudget = maxUsd !== null && Number(maxUsd) < 0.02;
@@ -289,6 +302,7 @@ export async function startFixtures() {
       accepts: [baseOption("10000"), solanaOption("10000")],
       resourceUrl: (r) => `${doctorUrl}${r.url}`,
       state,
+      sign: { key: signerKeys.doctor, route: () => "GET /api/v1/diagnose", input: () => Object.fromEntries(url.searchParams) },
       respond: () => ({
         url: url.searchParams.get("url"),
         method: url.searchParams.get("method") || "GET",
@@ -315,6 +329,7 @@ export async function startFixtures() {
       accepts: [baseOption(prices[req.url])],
       resourceUrl: (r) => `${presignUrl}${r.url}`,
       state,
+      sign: { key: signerKeys.presign, route: (r) => `POST ${r.url}`, input: (_r, input) => input },
       respond: (_r, input) => {
         state.lastPresign = { path: req.url, input };
         const red = input.typedData?.primaryType === "Permit";

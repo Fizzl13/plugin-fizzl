@@ -1,7 +1,7 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import plugin from "../dist/index.js";
-import { startFixtures, closeAll, fakeRuntime, message, newSolanaKey, newEvmKey, SOLANA, BASE } from "./fixtures.mjs";
+import { startFixtures, closeAll, fakeRuntime, message, newSolanaKey, newEvmKey, SOLANA, BASE, signerKeys } from "./fixtures.mjs";
 
 const action = (name) => plugin.actions.find((a) => a.name === name);
 const ICHIMOKU = action("FIZZL_ICHIMOKU_SIGNAL");
@@ -37,6 +37,8 @@ function runtimeWith(keys) {
     X402_DOCTOR_URL: fx.doctorUrl,
     PRESIGN_GUARD_URL: fx.presignUrl,
     SOLANA_RPC_URL: fx.rpc,
+    FIZZL_DOCTOR_SIGNERS: signerKeys.doctor.address,
+    FIZZL_PRESIGN_SIGNERS: signerKeys.presign.address,
     ...keys,
   });
 }
@@ -373,4 +375,62 @@ test("spend cap: FIZZL_MAX_PAYMENT_USD below $0.50 refuses trade setups before s
   assert.equal(result.success, false);
   assert.match(result.error, /maxAmountPerPayment|spend/i);
   assert.equal(fx.state.payments.length, 0, "nothing was signed");
+});
+
+test("signed verdicts: a valid Doctor receipt shows as signed; a changed verdict is not used", async () => {
+  fx.state.payments.length = 0;
+  const ok = await run(PREFLIGHT, runtimeWith({ EVM_PRIVATE_KEY: evm.secret }), "Is it safe to pay https://api.example.com/paid/1? Max $0.05");
+  assert.equal(ok.result.success, true, ok.result.error);
+  assert.match(ok.replies[0].text, /Signed by x402 Doctor ✓ \(receipt 3f2a9c10\)/);
+
+  fx.state.tamper = (b) => ({ ...b, verdict: b.verdict === "go" ? "no_go" : "go" });
+  try {
+    const bad = await run(PREFLIGHT, runtimeWith({ EVM_PRIVATE_KEY: evm.secret }), "should I pay https://api.example.com/paid/1 with a budget of $0.01");
+    assert.equal(bad.result.success, false);
+    assert.match(bad.replies[0].text, /not provably from x402 Doctor \(the signature does not match: the answer was changed\)\. Do not pay on it\./);
+  } finally {
+    fx.state.tamper = null;
+  }
+});
+
+test("signed verdicts: presign-guard answers are checked too; unsigned means do not sign", async () => {
+  fx.state.tamper = ({ receipt, ...b }) => b;
+  try {
+    const bad = await run(PRESIGN, runtimeWith({ EVM_PRIVATE_KEY: evm.secret }), `Is it safe to sign this? ${PERMIT}`);
+    assert.equal(bad.result.success, false);
+    assert.match(bad.replies[0].text, /not provably from presign-guard \(no signed receipt\)\. Do not sign until it can be checked\./);
+  } finally {
+    fx.state.tamper = null;
+  }
+  const good = await run(PRESIGN, runtimeWith({ EVM_PRIVATE_KEY: evm.secret }), `Is it safe to sign this? ${PERMIT}`);
+  assert.match(good.replies[0].text, /Signed by presign-guard ✓/);
+});
+
+test("signed verdicts: an answer signed by someone else is refused; FIZZL_VERIFY_RECEIPTS=off skips the check", async () => {
+  const stranger = await run(PREFLIGHT, runtimeWith({ EVM_PRIVATE_KEY: evm.secret, FIZZL_DOCTOR_SIGNERS: "0x0000000000000000000000000000000000000001" }), "Is it safe to pay https://api.example.com/paid/1? Max $0.05");
+  assert.equal(stranger.result.success, false);
+  assert.match(stranger.replies[0].text, /signed by an unknown key/);
+  fx.state.tamper = ({ receipt, ...b }) => b;
+  try {
+    const off = await run(PREFLIGHT, runtimeWith({ EVM_PRIVATE_KEY: evm.secret, FIZZL_VERIFY_RECEIPTS: "off" }), "Is it safe to pay https://api.example.com/paid/1? Max $0.05");
+    assert.equal(off.result.success, true, off.result.error);
+    assert.doesNotMatch(off.replies[0].text, /Signed by/);
+  } finally {
+    fx.state.tamper = null;
+  }
+});
+
+test("signed verdicts: the published signers are pinned by default", async () => {
+  const { SIGNERS } = await import("../dist/receipt.js");
+  assert.deepEqual(SIGNERS, { doctor: ["0xAaE66eF9Ee234397df33901568c8FBc36d43277d"], presign: ["0xf084Ea47Ca4D99BB4De3ECB0332b316bE6521EaE"] });
+});
+
+test("signed verdicts: real production receipts from x402 Doctor and presign-guard verify (27 Sep 2026)", async () => {
+  const { verifyReceipt, SIGNERS } = await import("../dist/receipt.js");
+  const doctor = {"url": "https://ichimoku-signal.onrender.com/signal/BTC-USDT", "method": "GET", "verdict": "go", "safe_to_pay": true, "summary": "OK to pay: $0.02 on Base.", "recommended_option": 0, "options": [{"index": 0, "network": "eip155:8453", "network_name": "Base", "testnet": false, "scheme": "exact", "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", "asset_symbol": "USDC", "amount": "20000", "usd": 0.02, "pay_to": "0x6B0F4651eD42893ab58139938175E4a69f175F25", "payable": true, "problems": []}, {"index": 1, "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", "network_name": "Solana", "testnet": false, "scheme": "exact", "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", "asset_symbol": "USDC", "amount": "20000", "usd": 0.02, "pay_to": "ATWJ82T8nRdQwZnaysB68N5EpaSvLRsQP4h6eWmaJBH9", "payable": true, "problems": []}], "signals": {"https": true, "advertised_price_usd": 0.02, "listed_in_cdp_bazaar": false, "origin_in_cdp_bazaar": true, "track_record": null, "x402_version": 2}, "reasons": [], "checked_at": "2026-09-27T07:47:00.700Z", "cached": false, "receipt": {"request_id": "edddd0ee-ff3a-4470-80bb-b92a82e17d96", "route": "GET /api/v1/preflight", "input_sha256": "2da6ecd53282b9699f961b5095b926a46c9044ecc5d6cf88080d65eaabe63af1", "signed_at": "2026-09-27T07:47:00.700Z", "signer": "0xAaE66eF9Ee234397df33901568c8FBc36d43277d", "algorithm": "eip191-canonical-json-v1", "signature": "0xdcad07dfb5f05ee688bc62144759d928f7527c2157437485b0868969c1f118250e2677d910a81ee91be55bc8ac1fbf1c7487910ec5ab0d890f8475aa49821a481c"}};
+  const presign = {"version": "1", "verdict": "green", "grade": "SAFE", "one_liner": "SAFE: no red flags, $133k liquidity, 2.7 years old", "reasons": [{"code": "TOKEN_MINTABLE", "severity": "info"}, {"code": "LP_NOT_LOCKED", "severity": "info", "details": {"lpLockedPct": 0}}], "token": {"chain": "base", "address": "0x4ed4e862860bed51a9570b96d89af5e1b0efefed", "name": "Degen", "symbol": "DEGEN"}, "market": {"name": "Degen", "symbol": "DEGEN", "priceUsd": 0.001096, "liquidityUsd": 133299, "marketCapUsd": 39589675, "volume24hUsd": 87850, "pairs": 1, "firstPairAt": "2024-01-07T19:30:45.000Z", "ageSeconds": 85837656, "dex": "uniswap", "url": "https://dexscreener.com/base/0xc9034c3e7f58003e6ae0c8438e7c8f4598d5acaa", "socials": 4}, "sources": ["goplus", "dexscreener"], "checkedAt": "2026-09-27T07:18:21.473Z", "disclaimer": "Automated on-chain and market checks, not financial advice. Green means no known red flags, not that the token will hold its value.", "receipt": {"request_id": "dbcf3165-c07c-4f96-9603-d25e6cee6438", "route": "GET /v1/token", "input_sha256": "7a79177b86e29e5d31407820b3cc6a944d3c10b950c2b9bae8eeb0030d371793", "signed_at": "2026-09-27T07:18:21.712Z", "signer": "0xf084Ea47Ca4D99BB4De3ECB0332b316bE6521EaE", "algorithm": "eip191-canonical-json-v1", "signature": "0x7f2e0cf2d7fa1f2a7f4a7397648396e8bc6867759f0ac12b687cec3fa25b472e343382aa49033b8e35535f9bcfadec9a6796fd4a2f2e586b82854e364d0b142a1c"}};
+  assert.equal((await verifyReceipt(doctor, { signers: SIGNERS.doctor, route: "GET /api/v1/preflight", input: { url: "https://ichimoku-signal.onrender.com/signal/BTC-USDT", max_usd: "0.05" } })).valid, true);
+  assert.equal((await verifyReceipt(presign, { signers: SIGNERS.presign, route: "GET /v1/token", input: { chain: "base", address: "0x4ed4e862860bed51a9570b96d89af5e1b0efefed" } })).valid, true);
+  assert.equal((await verifyReceipt({ ...presign, verdict: "red" }, { signers: SIGNERS.presign })).valid, false);
+  assert.equal((await verifyReceipt(doctor, { signers: SIGNERS.presign })).valid, false, "Doctor's key is not presign-guard's");
 });
