@@ -4,13 +4,13 @@
 import type { IAgentRuntime } from "@elizaos/core";
 import { FizzlClient } from "./client.js";
 import { DEFAULT_URLS, type ServiceUrls } from "./services.js";
-import { SIGNERS } from "./receipt.js";
+import { SIGNERS, AUTHORITY } from "./receipt.js";
 
 export interface FizzlContext {
   client: FizzlClient;
   urls: ServiceUrls;
   /** Signed-verdict checks: "require" (default) or "off", and the accepted signers per service. */
-  receipts: { mode: "require" | "off"; doctor: string[]; presign: string[] };
+  receipts: { mode: "require" | "off"; doctor: string[]; presign: string[]; authority: string | null };
 }
 
 const contexts = new WeakMap<IAgentRuntime, Promise<FizzlContext>>();
@@ -44,6 +44,7 @@ export function getContext(runtime: IAgentRuntime): Promise<FizzlContext> {
           mode: setting(runtime, "FIZZL_VERIFY_RECEIPTS") === "off" ? "off" : "require",
           doctor: list(setting(runtime, "FIZZL_DOCTOR_SIGNERS")) ?? [...SIGNERS.doctor],
           presign: list(setting(runtime, "FIZZL_PRESIGN_SIGNERS")) ?? [...SIGNERS.presign],
+          authority: setting(runtime, "FIZZL_RECEIPT_AUTHORITY") === "none" ? null : setting(runtime, "FIZZL_RECEIPT_AUTHORITY") ?? AUTHORITY,
         },
       };
     })();

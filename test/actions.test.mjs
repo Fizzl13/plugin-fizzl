@@ -1,7 +1,7 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import plugin from "../dist/index.js";
-import { startFixtures, closeAll, fakeRuntime, message, newSolanaKey, newEvmKey, SOLANA, BASE, signerKeys } from "./fixtures.mjs";
+import { startFixtures, closeAll, fakeRuntime, message, newSolanaKey, newEvmKey, SOLANA, BASE, signerKeys, signAnswer } from "./fixtures.mjs";
 
 const action = (name) => plugin.actions.find((a) => a.name === name);
 const ICHIMOKU = action("FIZZL_ICHIMOKU_SIGNAL");
@@ -433,4 +433,43 @@ test("signed verdicts: real production receipts from x402 Doctor and presign-gua
   assert.equal((await verifyReceipt(presign, { signers: SIGNERS.presign, route: "GET /v1/token", input: { chain: "base", address: "0x4ed4e862860bed51a9570b96d89af5e1b0efefed" } })).valid, true);
   assert.equal((await verifyReceipt({ ...presign, verdict: "red" }, { signers: SIGNERS.presign })).valid, false);
   assert.equal((await verifyReceipt(doctor, { signers: SIGNERS.presign })).valid, false, "Doctor's key is not presign-guard's");
+});
+
+test("key rotation: a new key certified by the payout wallet is trusted without a plugin update", async () => {
+  const { certMessage, AUTHORITY } = await import("../dist/receipt.js");
+  assert.equal(AUTHORITY, "0x6B0F4651eD42893ab58139938175E4a69f175F25");
+  const { privateKeyToAccount, generatePrivateKey } = await import("viem/accounts");
+  const payout = privateKeyToAccount(generatePrivateKey());
+  const rotated = privateKeyToAccount(generatePrivateKey());
+  const certBy = async (key, service) => {
+    const c = { service, signer: rotated.address, valid_from: "2026-09-01", authority: payout.address };
+    return { ...c, signature: await key.signMessage({ message: certMessage(c) }) };
+  };
+  // The service re-signs with its new key and carries the certificate; the plugin pins only the old keys.
+  const resignWith = (cert) => async ({ receipt, ...body }, req) => signAnswer(body, rotated, req.route, req.input, cert);
+  const rt = (extra = {}) => runtimeWith({ EVM_PRIVATE_KEY: evm.secret, FIZZL_RECEIPT_AUTHORITY: payout.address, ...extra });
+  try {
+    fx.state.tamper = resignWith(await certBy(payout, "x402-doctor"));
+    const ok = await run(PREFLIGHT, rt(), "Is it safe to pay https://api.example.com/paid/1? Max $0.05");
+    assert.equal(ok.result.success, true, ok.result.error);
+    assert.match(ok.replies[0].text, /Signed by x402 Doctor ✓/);
+
+    fx.state.tamper = resignWith(await certBy(payout, "presign-guard"));
+    const wrongService = await run(PREFLIGHT, rt(), "Is it safe to pay https://api.example.com/paid/1? Max $0.05");
+    assert.equal(wrongService.result.success, false, "a presign-guard certificate does not cover Doctor");
+
+    fx.state.tamper = resignWith(await certBy(privateKeyToAccount(generatePrivateKey()), "x402-doctor"));
+    const foreign = await run(PREFLIGHT, rt(), "Is it safe to pay https://api.example.com/paid/1? Max $0.05");
+    assert.match(foreign.replies[0].text, /signed by an unknown key/);
+
+    fx.state.tamper = resignWith(await certBy(payout, "x402-doctor"));
+    const off = await run(PREFLIGHT, rt({ FIZZL_RECEIPT_AUTHORITY: "none" }), "Is it safe to pay https://api.example.com/paid/1? Max $0.05");
+    assert.equal(off.result.success, false, "FIZZL_RECEIPT_AUTHORITY=none accepts only pinned keys");
+
+    fx.state.tamper = resignWith(await certBy(payout, "presign-guard"));
+    const presign = await run(PRESIGN, rt(), `Is it safe to sign this? ${PERMIT}`);
+    assert.match(presign.replies[0].text, /Signed by presign-guard ✓/, "the same works for presign-guard");
+  } finally {
+    fx.state.tamper = null;
+  }
 });

@@ -11,8 +11,8 @@ import { canonicalJson, inputHash } from "../dist/receipt.js";
 
 // Stand-ins for Doctor's and presign-guard's signers: answers are signed like the live services sign them.
 export const signerKeys = { doctor: privateKeyToAccount(generatePrivateKey()), presign: privateKeyToAccount(generatePrivateKey()) };
-export async function signAnswer(body, key, route, input) {
-  const receipt = { request_id: "3f2a9c10-0000-4000-8000-000000000000", route, input_sha256: inputHash(route, input), signed_at: "2026-09-27T10:00:00.000Z", signer: key.address, algorithm: "eip191-canonical-json-v1" };
+export async function signAnswer(body, key, route, input, cert = null) {
+  const receipt = { request_id: "3f2a9c10-0000-4000-8000-000000000000", route, input_sha256: inputHash(route, input), ...(cert && { cert }), signed_at: "2026-09-27T10:00:00.000Z", signer: key.address, algorithm: "eip191-canonical-json-v1" };
   return { ...body, receipt: { ...receipt, signature: await key.signMessage({ message: canonicalJson({ ...body, receipt }) }) } };
 }
 
@@ -119,7 +119,7 @@ function paidRoute({ accepts, resourceUrl, respond, state, sign }) {
     const input = body ? JSON.parse(body) : null;
     let out = respond(req, input);
     if (sign) out = await signAnswer(out, sign.key, sign.route(req), sign.input(req, input));
-    if (state.tamper) out = state.tamper(out);
+    if (state.tamper) out = await state.tamper(out, sign && { route: sign.route(req), input: sign.input(req, input) });
     res.end(JSON.stringify(out));
   };
 }
