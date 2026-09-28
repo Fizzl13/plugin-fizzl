@@ -2,9 +2,9 @@
 
 ![plugin-fizzl](images/banner.jpg)
 
-[![Watch: an Eliza agent using plugin-fizzl (39 s)](https://ichimoku-signal.onrender.com/media/plugin.jpg)](https://ichimoku-signal.onrender.com/media/plugin.mp4)
+[![Watch: an Eliza agent using plugin-fizzl (39 s)](https://ichimoku-signal.fizzl.eu/media/plugin.jpg)](https://ichimoku-signal.fizzl.eu/media/plugin.mp4)
 
-▶ [Watch the 39-second video](https://ichimoku-signal.onrender.com/media/plugin.mp4): install, then an agent answers "which coins are bullish on the 4h?" and "where would the stop go?", paying per call.
+▶ [Watch the 39-second video](https://ichimoku-signal.fizzl.eu/media/plugin.mp4): install, then an agent answers "which coins are bullish on the 4h?" and "where would the stop go?", paying per call.
 
 ElizaOS plugin that gives your agent 10 paid tools for crypto: ranked trade setups across 148 coins, trading signals,
 a market scan, price levels with stop and targets, and safety checks before it signs or pays. Your agent pays per call in USDC on
@@ -27,16 +27,16 @@ Agent: Market scan 4h: 98 of 148 coins bullish (98 bullish · 21 neutral · 29 b
 
 | Action | Service | What it does | Price | Pays on |
 |--------|---------|--------------|-------|---------|
-| `FIZZL_TRADE_SETUPS` | [Ichimoku Signal](https://ichimoku-signal.onrender.com) | Which coins have a trade setup now: for 148 top-200 coins the six-indicator signal plus entry, stop, two targets and risk/reward, ranked best first, with each coin's liquidity rank by global trading volume (thin coins rank lower); "long only", "R/R 2", "top 5", "liquid" (the 30 most traded coins) or "50 most traded" and the interval come from the question (default 4h) | $0.50 | Solana or Base |
-| `FIZZL_ICHIMOKU_SIGNAL` | [Ichimoku Signal](https://ichimoku-signal.onrender.com) | Live Ichimoku Cloud signal for a crypto pair: bullish/bearish/neutral, cloud position, tenkan/kijun cross and all line values | $0.02 | Solana or Base |
-| `FIZZL_CONFLUENCE_SIGNAL` | [Ichimoku Signal](https://ichimoku-signal.onrender.com) | Six indicators in one call (Ichimoku, RSI, MACD, EMA 50/200, Bollinger, volume), each with a vote, plus a combined signal and confidence | $0.15 | Solana or Base |
-| `FIZZL_PRICE_LEVELS` | [Ichimoku Signal](https://ichimoku-signal.onrender.com) | Support/resistance, ATR, and a long/short plan with stop, two targets and risk/reward (levels, not advice) | $0.05 | Solana or Base |
-| `FIZZL_MARKET_SCAN` | [Ichimoku Signal](https://ichimoku-signal.onrender.com) | The Ichimoku signal for 148 top-200 coins at once, strongest bullish first, with market breadth; "which coins are bearish" filters | $0.10 | Solana or Base |
-| `FIZZL_CHECK_WALLET_APPROVALS` | [PlainText](https://smartcontractexplainer.onrender.com) | Checks an EVM wallet's live token/NFT approvals and explains the risk: SAFE / CAUTION / RISK | $0.10 | Solana or Base |
-| `FIZZL_EXPLAIN_APPROVAL` | [PlainText](https://smartcontractexplainer.onrender.com) | Explains a pasted approval/permission JSON in plain language with a verdict | $0.05 | Solana or Base |
-| `FIZZL_PREFLIGHT_X402` | [x402 Doctor](https://x402-doctor.onrender.com) | Before paying an unknown x402 endpoint: GO / CAUTION / NO-GO, the recommended payment option and why (would not settle, over your budget, charges more than advertised, not HTTPS, unknown token). Never pays the endpoint itself | $0.001 | Solana or Base |
-| `FIZZL_PRESIGN_CHECK` | [presign-guard](https://presign-guard.onrender.com) | Before signing a transaction, token approval or EIP-712 signature (Permit, Permit2, Seaport, x402 payment): GREEN / ORANGE / RED with reason codes, for who gets access and for the token itself (honeypots, fake tokens such as a fake USDC). Only sign on green, ask a person on orange, never sign on red. Add "explain" (optionally "in Dutch") for a plain-language explanation | $0.01 ($0.03 explained) | Base |
-| `FIZZL_DIAGNOSE_X402` | [x402 Doctor](https://x402-doctor.onrender.com) | Diagnoses why an x402 paid endpoint fails (challenge, accepts[], Solana settlement, Bazaar/OpenAPI discovery, paywall) with a fix hint per check. Never pays the endpoint itself | $0.01 | Solana or Base |
+| `FIZZL_TRADE_SETUPS` | [Ichimoku Signal](https://ichimoku-signal.fizzl.eu) | Which coins have a trade setup now: for 148 top-200 coins the six-indicator signal plus entry, stop, two targets and risk/reward, ranked best first, with each coin's liquidity rank by global trading volume (thin coins rank lower); "long only", "R/R 2", "top 5", "liquid" (the 30 most traded coins) or "50 most traded" and the interval come from the question (default 4h) | $0.50 | Solana or Base |
+| `FIZZL_ICHIMOKU_SIGNAL` | [Ichimoku Signal](https://ichimoku-signal.fizzl.eu) | Live Ichimoku Cloud signal for a crypto pair: bullish/bearish/neutral, cloud position, tenkan/kijun cross and all line values | $0.02 | Solana or Base |
+| `FIZZL_CONFLUENCE_SIGNAL` | [Ichimoku Signal](https://ichimoku-signal.fizzl.eu) | Six indicators in one call (Ichimoku, RSI, MACD, EMA 50/200, Bollinger, volume), each with a vote, plus a combined signal and confidence | $0.15 | Solana or Base |
+| `FIZZL_PRICE_LEVELS` | [Ichimoku Signal](https://ichimoku-signal.fizzl.eu) | Support/resistance, ATR, and a long/short plan with stop, two targets and risk/reward (levels, not advice) | $0.05 | Solana or Base |
+| `FIZZL_MARKET_SCAN` | [Ichimoku Signal](https://ichimoku-signal.fizzl.eu) | The Ichimoku signal for 148 top-200 coins at once, strongest bullish first, with market breadth; "which coins are bearish" filters | $0.10 | Solana or Base |
+| `FIZZL_CHECK_WALLET_APPROVALS` | [PlainText](https://plaintext.fizzl.eu) | Checks an EVM wallet's live token/NFT approvals and explains the risk: SAFE / CAUTION / RISK | $0.10 | Solana or Base |
+| `FIZZL_EXPLAIN_APPROVAL` | [PlainText](https://plaintext.fizzl.eu) | Explains a pasted approval/permission JSON in plain language with a verdict | $0.05 | Solana or Base |
+| `FIZZL_PREFLIGHT_X402` | [x402 Doctor](https://x402-doctor.fizzl.eu) | Before paying an unknown x402 endpoint: GO / CAUTION / NO-GO, the recommended payment option and why (would not settle, over your budget, charges more than advertised, not HTTPS, unknown token). Never pays the endpoint itself | $0.001 | Solana or Base |
+| `FIZZL_PRESIGN_CHECK` | [presign-guard](https://presign-guard.fizzl.eu) | Before signing a transaction, token approval or EIP-712 signature (Permit, Permit2, Seaport, x402 payment): GREEN / ORANGE / RED with reason codes, for who gets access and for the token itself (honeypots, fake tokens such as a fake USDC). Only sign on green, ask a person on orange, never sign on red. Add "explain" (optionally "in Dutch") for a plain-language explanation | $0.01 ($0.03 explained) | Base |
+| `FIZZL_DIAGNOSE_X402` | [x402 Doctor](https://x402-doctor.fizzl.eu) | Diagnoses why an x402 paid endpoint fails (challenge, accepts[], Solana settlement, Bazaar/OpenAPI discovery, paywall) with a fix hint per check. Never pays the endpoint itself | $0.01 | Solana or Base |
 
 A `FIZZL_SERVICES` provider tells the agent which of these tools it has and which wallets pay for them.
 
@@ -110,7 +110,7 @@ A valid answer ends with "Signed by x402 Doctor ✓" (or presign-guard). A chang
 import { FizzlClient, presignCheck } from "plugin-fizzl";
 
 const client = await FizzlClient.create({ evmPrivateKey: process.env.EVM_PRIVATE_KEY });
-const urls = { ichimoku: "", plaintext: "", doctor: "", presign: "https://presign-guard.onrender.com" };
+const urls = { ichimoku: "", plaintext: "", doctor: "", presign: "https://presign-guard.fizzl.eu" };
 
 const check = await presignCheck(client, urls, {
   request: { type: "signature", chainId: 8453, typedData },   // what you are about to sign

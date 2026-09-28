@@ -105,8 +105,8 @@ export const preflightX402Action: Action = {
   },
   examples: [
     [
-      { name: "{{user}}", content: { text: "Is it safe to pay https://ichimoku-signal.onrender.com/signal/BTC-USDT? Max $0.05 on solana." } },
-      { name: "{{agent}}", content: { text: "✅ GO https://ichimoku-signal.onrender.com/signal/BTC-USDT\nOK to pay: $0.02 on Solana.\nRecommended: $0.02 USDC on Solana → ATWJ…", actions: ["FIZZL_PREFLIGHT_X402"] } },
+      { name: "{{user}}", content: { text: "Is it safe to pay https://ichimoku-signal.fizzl.eu/signal/BTC-USDT? Max $0.05 on solana." } },
+      { name: "{{agent}}", content: { text: "✅ GO https://ichimoku-signal.fizzl.eu/signal/BTC-USDT\nOK to pay: $0.02 on Solana.\nRecommended: $0.02 USDC on Solana → ATWJ…", actions: ["FIZZL_PREFLIGHT_X402"] } },
     ],
   ],
 };

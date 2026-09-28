@@ -1,6 +1,6 @@
 {
   "name": "plugin-fizzl",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "description": "ElizaOS plugin: 10 paid tools for crypto agents, paid per call in USDC over x402 on Solana or Base (no API keys). Trading signals (ranked trade setups with entry, stop and targets across 148 coins, Ichimoku, 6-indicator confluence, price levels, a market scan), wallet-approval risk checks, pre-sign checks and x402 endpoint checks.",
   "type": "module",
   "main": "dist/index.js",
@@ -68,19 +68,19 @@
         "type": "string",
         "description": "Ichimoku Signal base URL",
         "required": false,
-        "default": "https://ichimoku-signal.onrender.com"
+        "default": "https://ichimoku-signal.fizzl.eu"
       },
       "PLAINTEXT_URL": {
         "type": "string",
         "description": "PlainText base URL",
         "required": false,
-        "default": "https://smartcontractexplainer.onrender.com"
+        "default": "https://plaintext.fizzl.eu"
       },
       "PRESIGN_GUARD_URL": {
         "type": "string",
         "description": "presign-guard base URL",
         "required": false,
-        "default": "https://presign-guard.onrender.com"
+        "default": "https://presign-guard.fizzl.eu"
       },
       "SOLANA_RPC_URL": {
         "type": "string",

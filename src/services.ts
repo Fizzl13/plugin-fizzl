@@ -191,10 +191,10 @@ export interface ServiceUrls {
 }
 
 export const DEFAULT_URLS: ServiceUrls = {
-  ichimoku: "https://ichimoku-signal.onrender.com",
-  plaintext: "https://smartcontractexplainer.onrender.com",
-  doctor: "https://x402-doctor.onrender.com",
-  presign: "https://presign-guard.onrender.com",
+  ichimoku: "https://ichimoku-signal.fizzl.eu",
+  plaintext: "https://plaintext.fizzl.eu",
+  doctor: "https://x402-doctor.fizzl.eu",
+  presign: "https://presign-guard.fizzl.eu",
 };
 
 const trim = (url: string) => url.replace(/\/+$/, "");
