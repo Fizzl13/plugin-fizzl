@@ -11,7 +11,7 @@ const VERDICT = {
   red: "🔴 RED: do not sign.",
 } as const;
 const SEVERITY_ORDER = { red: 0, orange: 1, info: 2 } as const;
-const short = (s: string) => (/^0x[a-fA-F0-9]{40}$/.test(s) ? `${s.slice(0, 6)}…${s.slice(-4)}` : s);
+const short = (s: string) => (/^0x[a-fA-F0-9]{40}$|^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(s) ? `${s.slice(0, 6)}…${s.slice(-4)}` : s);
 
 // Verdict and what to do first, then the reasons (red, orange, info), then the explanation.
 export function formatPresign(v: PresignVerdict): string {
@@ -25,14 +25,14 @@ export const presignCheckAction: Action = {
   name: "FIZZL_PRESIGN_CHECK",
   similes: ["PRESIGN_CHECK", "CHECK_BEFORE_SIGNING", "IS_IT_SAFE_TO_SIGN", "SIGNATURE_RISK_CHECK", "TRANSACTION_RISK_CHECK"],
   description:
-    "Before signing an EVM transaction, token approval or EIP-712 signature (Permit, Permit2, Seaport, x402 payment), ask presign-guard for a GREEN / ORANGE / RED verdict with reason codes. It checks who gets access (flagged or phishing addresses, plain wallets, unlimited or long-lived permissions) and the token itself (honeypots, fakes of known tokens such as a fake USDC in an x402 payment, owner powers, high taxes): only sign on green, ask a person on orange, never sign on red. Paid per call via x402: $0.01 USDC on Base ($0.03 with a plain-language explanation). Parameters: request (presign-guard body), or typedData (eth_signTypedData_v4 payload), or transaction ({ to, data, value, chainId }); explain (boolean), lang (en|nl).",
+    "Before signing a Solana transaction, an EVM transaction, token approval or EIP-712 signature (Permit, Permit2, Seaport, x402 payment), or a plain message, ask presign-guard for a GREEN / ORANGE / RED verdict with reason codes. On Solana it reads every instruction and simulates the transaction: a token account handed to someone else or a System Assign is red; unlimited delegates, durable nonces and hidden owner or delegate changes are orange. On EVM it checks who gets access (flagged or phishing addresses, plain wallets, unlimited or long-lived permissions) and the token itself (honeypots, fakes of known tokens, owner powers, high taxes). A message signed with eth_sign, or a sign-in message for another site, is red. Only sign on green, ask a person on orange, never sign on red. Paid per call via x402: $0.01 USDC on Base ($0.03 with a plain-language explanation). Parameters: transaction (a Solana base64 wire transaction, or an EVM { to, data, value, chainId }), from (the Solana wallet, when it isn't the fee payer), or typedData (eth_signTypedData_v4 payload), or message (+ method, origin), or request (presign-guard body); intent (what the agent means to do, one sentence), explain (boolean), lang (en|nl).",
   validate: async (_runtime, message) => {
     const text = message.content?.text ?? "";
     return ASK.test(text) && parsePresignInput(text) !== null;
   },
   handler: async (runtime, message, _state, options, callback): Promise<ActionResult> => {
     const input = parsePresignInput(message.content?.text ?? "", (options ?? {}) as Record<string, unknown>);
-    if (!input) return failure(callback, "Send what you are about to sign: the EIP-712 typed data, or the transaction { to, data, value, chainId }.");
+    if (!input) return failure(callback, "Send what you are about to sign: a Solana transaction (base64), the EIP-712 typed data, or the transaction { to, data, value, chainId }.");
 
     const ctx = await getContext(runtime);
     const { client, urls } = ctx;

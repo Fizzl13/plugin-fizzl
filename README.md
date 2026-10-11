@@ -35,7 +35,7 @@ Agent: Market scan 4h: 98 of 148 coins bullish (98 bullish · 21 neutral · 29 b
 | `FIZZL_CHECK_WALLET_APPROVALS` | [PlainText](https://plaintext.fizzl.eu) | Checks an EVM wallet's live token/NFT approvals and explains the risk: SAFE / CAUTION / RISK | $0.10 | Solana or Base |
 | `FIZZL_EXPLAIN_APPROVAL` | [PlainText](https://plaintext.fizzl.eu) | Explains a pasted approval/permission JSON in plain language with a verdict | $0.05 | Solana or Base |
 | `FIZZL_PREFLIGHT_X402` | [x402 Doctor](https://x402-doctor.fizzl.eu) | Before paying an unknown x402 endpoint: GO / CAUTION / NO-GO, the recommended payment option and why (would not settle, over your budget, charges more than advertised, not HTTPS, unknown token). Never pays the endpoint itself | $0.001 | Solana or Base |
-| `FIZZL_PRESIGN_CHECK` | [presign-guard](https://presign-guard.fizzl.eu) | Before signing a transaction, token approval or EIP-712 signature (Permit, Permit2, Seaport, x402 payment): GREEN / ORANGE / RED with reason codes, for who gets access and for the token itself (honeypots, fake tokens such as a fake USDC). Only sign on green, ask a person on orange, never sign on red. Add "explain" (optionally "in Dutch") for a plain-language explanation | $0.01 ($0.03 explained) | Base |
+| `FIZZL_PRESIGN_CHECK` | [presign-guard](https://presign-guard.fizzl.eu) | Before signing a Solana transaction (paste the base64, or pass `transaction`), an EVM transaction, token approval or EIP-712 signature (Permit, Permit2, Seaport, x402 payment), or a plain message (`message`): GREEN / ORANGE / RED with reason codes. On Solana every instruction is read and the transaction simulated (a token account handed to someone else is red; unlimited delegates, durable nonces, hidden owner or delegate changes are orange). On EVM: who gets access and the token itself (honeypots, fake tokens such as a fake USDC). Pass `intent` (what the agent means to do) to catch a transaction that does something else. Only sign on green, ask a person on orange, never sign on red. Add "explain" (optionally "in Dutch") for a plain-language explanation | $0.01 ($0.03 explained) | Base |
 | `FIZZL_DIAGNOSE_X402` | [x402 Doctor](https://x402-doctor.fizzl.eu) | Diagnoses why an x402 paid endpoint fails (challenge, accepts[], Solana settlement, Bazaar/OpenAPI discovery, paywall) with a fix hint per check. Never pays the endpoint itself | $0.01 | Solana or Base |
 
 A `FIZZL_SERVICES` provider tells the agent which of these tools it has and which wallets pay for them.
@@ -100,6 +100,7 @@ A valid answer ends with "Signed by x402 Doctor ✓" (or presign-guard). A chang
 - “Are the NFT approvals on 0x6B0F…5F25 safe on arbitrum?” → wallet check, `arbitrum`, `nft`
 - “Is this approval safe? ```json {…}```” → explain the payload
 - “Is it safe to sign this? {"primaryType":"Permit","domain":{…},"message":{…}}” → presign check of the typed data
+- “Is this Solana transaction safe to sign? AQAAAA…” (the base64 wire transaction) → presign check of the Solana transaction
   (chain from `domain.chainId`); a transaction `{ "to", "data", "value", "chainId" }` works too
 
 ## Check before signing, in code

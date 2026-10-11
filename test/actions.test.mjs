@@ -215,6 +215,15 @@ test("presign: a transaction from handler options, green is safe to sign", async
   assert.equal(result.values.safeToSign, true);
 });
 
+test("presign: a Solana transaction goes to presign-guard as type solana (with from and intent), paid on Base", async () => {
+  fx.state.payments.length = 0;
+  const wire = Buffer.concat([Buffer.from([1]), Buffer.alloc(64), Buffer.from([1, 0, 1, 2]), Buffer.alloc(64, 7), Buffer.alloc(32, 9), Buffer.from([1, 1, 2, 0, 1, 12, 2, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0])]).toString("base64");
+  const { result } = await run(PRESIGN, runtimeWith({ EVM_PRIVATE_KEY: evm.secret }), "check this solana transaction before I sign", { transaction: wire, from: sol.address, intent: "swap 1 SOL for USDC" });
+  assert.equal(result.success, true, result.error);
+  assert.deepEqual(fx.state.lastPresign.input, { type: "solana", transaction: wire, from: sol.address, intent: "swap 1 SOL for USDC" });
+  assert.deepEqual(fx.state.payments.map((p) => p.network), [BASE]);
+});
+
 test("presign: only a Solana wallet refuses before paying, and says what to set", async () => {
   fx.state.payments.length = 0;
   const { result } = await run(PRESIGN, runtimeWith({ SVM_PRIVATE_KEY: sol.secret }), `Is it safe to sign this? ${PERMIT}`);

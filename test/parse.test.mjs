@@ -59,3 +59,17 @@ test("parsePresignInput: ready requests, typed data, transactions, chain and exp
   assert.equal(parsePresignInput('{"spender":"0xabc","amount":"unlimited"}'), null);
   assert.equal(parsePresignInput("no json here"), null);
 });
+
+test("parsePresignInput: a Solana transaction (pasted or given), a plain message, and intent", () => {
+  // One signer (an empty signature) and a message: what a wallet or dapp hands over, base64.
+  const wire = Buffer.concat([Buffer.from([1]), Buffer.alloc(64), Buffer.from([1, 0, 1, 2]), Buffer.alloc(64, 7), Buffer.alloc(32, 9), Buffer.from([1, 1, 2, 0, 1, 12, 2, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0])]).toString("base64");
+  assert.deepEqual(parsePresignInput(`is this solana tx safe to sign? ${wire}`), { request: { type: "solana", transaction: wire }, explain: false, lang: "en" });
+  const wallet = "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9";
+  assert.deepEqual(parsePresignInput("check this", { transaction: wire, from: wallet, intent: "send 1 SOL to Bob" }).request, { type: "solana", transaction: wire, from: wallet, intent: "send 1 SOL to Bob" });
+  assert.deepEqual(parsePresignInput("check", { message: "Sign in to app.example", origin: "https://evil.example" }).request, { type: "message", message: "Sign in to app.example", origin: "https://evil.example" });
+  assert.equal(parsePresignInput("check", { message: "x", method: "eth_sign" }).request.method, "eth_sign");
+  // Long EVM calldata is hex, not a Solana transaction.
+  const tx = { to: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", data: "0xa9059cbb" + "00".repeat(64) };
+  assert.equal(parsePresignInput(`tx ${JSON.stringify(tx)}`).request.type, "transaction");
+  assert.equal(parsePresignInput(`sign ${"QUFB".repeat(40)}`), null, "base64 that isn't a transaction");
+});
