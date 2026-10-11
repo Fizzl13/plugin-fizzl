@@ -25,7 +25,7 @@ export const presignCheckAction: Action = {
   name: "FIZZL_PRESIGN_CHECK",
   similes: ["PRESIGN_CHECK", "CHECK_BEFORE_SIGNING", "IS_IT_SAFE_TO_SIGN", "SIGNATURE_RISK_CHECK", "TRANSACTION_RISK_CHECK"],
   description:
-    "Before signing a Solana transaction, an EVM transaction, token approval or EIP-712 signature (Permit, Permit2, Seaport, x402 payment), or a plain message, ask presign-guard for a GREEN / ORANGE / RED verdict with reason codes. On Solana it reads every instruction and simulates the transaction: a token account handed to someone else or a System Assign is red; unlimited delegates, durable nonces and hidden owner or delegate changes are orange. On EVM it checks who gets access (flagged or phishing addresses, plain wallets, unlimited or long-lived permissions) and the token itself (honeypots, fakes of known tokens, owner powers, high taxes). A message signed with eth_sign, or a sign-in message for another site, is red. Only sign on green, ask a person on orange, never sign on red. Paid per call via x402: $0.01 USDC on Base ($0.03 with a plain-language explanation). Parameters: transaction (a Solana base64 wire transaction, or an EVM { to, data, value, chainId }), from (the Solana wallet, when it isn't the fee payer), or typedData (eth_signTypedData_v4 payload), or message (+ method, origin), or request (presign-guard body); intent (what the agent means to do, one sentence), explain (boolean), lang (en|nl).",
+    "Before signing a Solana transaction, an EVM transaction, token approval or EIP-712 signature (Permit, Permit2, Seaport, x402 payment), or a plain message, ask presign-guard for a GREEN / ORANGE / RED verdict with reason codes. On Solana it reads every instruction and simulates the transaction: a token account handed to someone else or a System Assign is red; unlimited delegates, durable nonces and hidden owner or delegate changes are orange. On EVM it checks who gets access (flagged or phishing addresses, plain wallets, unlimited or long-lived permissions) and the token itself (honeypots, fakes of known tokens, owner powers, high taxes). A message signed with eth_sign, or a sign-in message for another site, is red. Only sign on green, ask a person on orange, never sign on red. Paid per call via x402: $0.01 USDC on Solana or Base ($0.03 with a plain-language explanation). Parameters: transaction (a Solana base64 wire transaction, or an EVM { to, data, value, chainId }), from (the Solana wallet, when it isn't the fee payer), or typedData (eth_signTypedData_v4 payload), or message (+ method, origin), or request (presign-guard body); intent (what the agent means to do, one sentence), explain (boolean), lang (en|nl).",
   validate: async (_runtime, message) => {
     const text = message.content?.text ?? "";
     return ASK.test(text) && parsePresignInput(text) !== null;
@@ -36,9 +36,6 @@ export const presignCheckAction: Action = {
 
     const ctx = await getContext(runtime);
     const { client, urls } = ctx;
-    if (client.canPay && !client.wallets.base) {
-      return failure(callback, "presign-guard is paid in USDC on Base only. Set EVM_PRIVATE_KEY to a Base wallet with a little USDC.");
-    }
     const result = await presignCheck(client, urls, input);
     if (!result.ok || !result.data) return failure(callback, `Could not check this before signing: ${result.error}. Do not sign until it can be checked.`);
     const signed = await receiptCheck(ctx, "presign", result);

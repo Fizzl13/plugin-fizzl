@@ -317,7 +317,7 @@ export async function startFixtures() {
     })(req, res, body);
   });
 
-  // presign-guard: Base only, like the live service. Remembers the last request body.
+  // presign-guard: Base and Solana, like the live service. Remembers the last request body.
   let presignUrl;
   presignUrl = await listen(async (req, res, body) => {
     const prices = { "/v1/check": "10000", "/v1/check/explain": "30000" };
@@ -326,7 +326,7 @@ export async function startFixtures() {
       return res.end("{}");
     }
     return paidRoute({
-      accepts: [baseOption(prices[req.url])],
+      accepts: [baseOption(prices[req.url]), solanaOption(prices[req.url])],
       resourceUrl: (r) => `${presignUrl}${r.url}`,
       state,
       sign: { key: signerKeys.presign, route: (r) => `POST ${r.url}`, input: (_r, input) => input },

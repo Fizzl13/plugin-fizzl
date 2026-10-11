@@ -184,11 +184,11 @@ test("preflight: over budget is NO-GO without a recommendation line", async () =
   assert.equal(result.values.x402SafeToPay, false);
 });
 
-test("presign: pasted typed data is wrapped as a signature request, paid $0.01 on Base (even with a Solana wallet too), red first", async () => {
+test("presign: pasted typed data is wrapped as a signature request, paid $0.01 (on Solana when both wallets are set), red first", async () => {
   fx.state.payments.length = 0;
   const { result, replies } = await run(PRESIGN, runtimeWith({ SVM_PRIVATE_KEY: sol.secret, EVM_PRIVATE_KEY: evm.secret }), `Is it safe to sign this? ${PERMIT}`);
   assert.equal(result.success, true, result.error);
-  assert.deepEqual(fx.state.payments.map((p) => [p.network, p.valid, p.payer, p.path]), [[BASE, true, evm.address, "/v1/check"]]);
+  assert.deepEqual(fx.state.payments.map((p) => [p.network, p.valid, p.payer, p.path]), [[SOLANA, true, sol.address, "/v1/check"]]);
   assert.equal(fx.state.lastPresign.input.type, "signature");
   assert.equal(fx.state.lastPresign.input.chainId, 8453);
   assert.equal(fx.state.lastPresign.input.typedData.primaryType, "Permit");
@@ -215,7 +215,7 @@ test("presign: a transaction from handler options, green is safe to sign", async
   assert.equal(result.values.safeToSign, true);
 });
 
-test("presign: a Solana transaction goes to presign-guard as type solana (with from and intent), paid on Base", async () => {
+test("presign: a Solana transaction goes to presign-guard as type solana (with from and intent), paid on Base with an EVM key only", async () => {
   fx.state.payments.length = 0;
   const wire = Buffer.concat([Buffer.from([1]), Buffer.alloc(64), Buffer.from([1, 0, 1, 2]), Buffer.alloc(64, 7), Buffer.alloc(32, 9), Buffer.from([1, 1, 2, 0, 1, 12, 2, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0])]).toString("base64");
   const { result } = await run(PRESIGN, runtimeWith({ EVM_PRIVATE_KEY: evm.secret }), "check this solana transaction before I sign", { transaction: wire, from: sol.address, intent: "swap 1 SOL for USDC" });
@@ -224,12 +224,11 @@ test("presign: a Solana transaction goes to presign-guard as type solana (with f
   assert.deepEqual(fx.state.payments.map((p) => p.network), [BASE]);
 });
 
-test("presign: only a Solana wallet refuses before paying, and says what to set", async () => {
+test("presign: a Solana wallet alone pays the check on Solana", async () => {
   fx.state.payments.length = 0;
   const { result } = await run(PRESIGN, runtimeWith({ SVM_PRIVATE_KEY: sol.secret }), `Is it safe to sign this? ${PERMIT}`);
-  assert.equal(result.success, false);
-  assert.match(result.error, /Base only.*EVM_PRIVATE_KEY/);
-  assert.equal(fx.state.payments.length, 0);
+  assert.equal(result.success, true, result.error);
+  assert.deepEqual(fx.state.payments.map((p) => [p.network, p.valid, p.payer]), [[SOLANA, true, sol.address]]);
 });
 
 test("no wallet configured: every action explains what to set", async () => {
