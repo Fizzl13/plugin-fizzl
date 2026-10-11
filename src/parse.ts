@@ -208,7 +208,39 @@ function chainIdFrom(text: string, value: unknown): number {
 // What the agent is about to sign, as a presign-guard request. Accepts:
 // a ready request ({ type, chainId, … }), an eth_signTypedData_v4 payload
 // ({ domain, primaryType, message }) or a transaction ({ to, data, value? }).
+// A Solana wire transaction as wallets and dapps hand it over: base64, one or more signatures (64 bytes each,
+// zero while unsigned) and then the message. Long enough not to be mistaken for anything else.
+function solanaWire(s: unknown): string | null {
+  if (typeof s !== "string") return null;
+  const raw = s.trim();
+  if (raw.length < 120 || raw.length > 2400 || !/^[A-Za-z0-9+/]+={0,2}$/.test(raw)) return null;
+  if (/^(0x)?[0-9a-fA-F]+$/.test(raw)) return null; // EVM calldata or a hash, not base64
+  const bytes = Buffer.from(raw, "base64");
+  const signers = bytes[0];
+  return signers >= 1 && signers <= 12 && bytes.length > 1 + 64 * signers + 35 ? raw : null;
+}
+
 export function parsePresignInput(text: string, options: Record<string, unknown> = {}): PresignInput | null {
+  const intent = typeof options.intent === "string" && options.intent.trim() ? { intent: options.intent.trim().slice(0, 500) } : {};
+  const finish = (request: Record<string, unknown>): PresignInput => {
+    const explain = options.explain === true || /\b(explain|in plain|plain language|uitleg)\b/i.test(text);
+    const lang = options.lang === "nl" || /\b(dutch|nederlands|in het nederlands)\b/i.test(text) ? "nl" : "en";
+    return { request: { ...request, ...intent }, explain, lang };
+  };
+
+  // A Solana transaction: given as options.transaction (base64), or pasted in the message.
+  const wire = solanaWire(options.transaction) ?? solanaWire(/[A-Za-z0-9+/]{120,}={0,2}/.exec(text)?.[0]);
+  if (wire) {
+    const from = typeof options.from === "string" && /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(options.from) ? { from: options.from } : {};
+    return finish({ type: "solana", transaction: wire, ...from });
+  }
+  // A plain message about to be signed (personal_sign / eth_sign): given as options.message.
+  if (typeof options.message === "string" && options.message) {
+    const method = options.method === "eth_sign" ? { method: "eth_sign" } : {};
+    const origin = typeof options.origin === "string" ? { origin: options.origin } : {};
+    return finish({ type: "message", message: options.message.slice(0, 16384), ...method, ...origin });
+  }
+
   const given = options.request ?? options.typedData ?? options.transaction;
   const payload = given && typeof given === "object" && !Array.isArray(given)
     ? (given as Record<string, unknown>)
@@ -216,7 +248,11 @@ export function parsePresignInput(text: string, options: Record<string, unknown>
   if (!payload) return null;
 
   let request: Record<string, unknown> | null = null;
-  if (payload.type === "approval" || payload.type === "transaction" || payload.type === "signature") {
+  if (payload.type === "solana" && solanaWire(payload.transaction)) {
+    request = { ...payload };
+  } else if (payload.type === "message" && typeof payload.message === "string") {
+    request = { ...payload };
+  } else if (payload.type === "approval" || payload.type === "transaction" || payload.type === "signature") {
     request = { ...payload, chainId: chainIdFrom(text, payload.chainId) };
   } else if (typeof payload.primaryType === "string" && payload.domain && typeof payload.domain === "object" && payload.message && typeof payload.message === "object") {
     request = { type: "signature", chainId: chainIdFrom(text, (payload.domain as Record<string, unknown>).chainId), typedData: payload };
@@ -230,8 +266,5 @@ export function parsePresignInput(text: string, options: Record<string, unknown>
     };
   }
   if (!request) return null;
-
-  const explain = options.explain === true || /\b(explain|in plain|plain language|uitleg)\b/i.test(text);
-  const lang = options.lang === "nl" || /\b(dutch|nederlands|in het nederlands)\b/i.test(text) ? "nl" : "en";
-  return { request, explain, lang };
+  return finish(request);
 }
