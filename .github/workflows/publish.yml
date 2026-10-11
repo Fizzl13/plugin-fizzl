@@ -2,17 +2,24 @@ name: Publish to npm
 
 # Push a tag like v0.1.0 (matching package.json "version") to publish,
 # or run it by hand from the Actions tab to publish the current version on main.
+# Publishing uses npm trusted publishing (GitHub OIDC, provenance): no token or
+# secret. "check_only" only checks that npm trusts this workflow, and publishes nothing.
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      check_only:
+        description: "Only check that npm trusted publishing works for this workflow; publish nothing"
+        type: boolean
+        default: false
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write # npm provenance: links the published package to this build
+      id-token: write # trusted publishing and provenance
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -20,6 +27,19 @@ jobs:
           node-version: 22
           cache: npm
           registry-url: https://registry.npmjs.org
+      - run: npm install -g npm@latest # trusted publishing needs npm 11.5 or newer
+      # Ask npm for a publish token with this run's OIDC identity: it only answers when the package's
+      # trusted publisher names this repository and workflow. The token itself is never printed.
+      - name: Check trusted publishing
+        run: |
+          id_token=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=npm:registry.npmjs.org" | jq -r .value)
+          name=$(node -p 'require("./package.json").name')
+          code=$(curl -sS -o /tmp/exchange.json -w '%{http_code}' -X POST -H "Authorization: Bearer $id_token" "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/$name")
+          if [ "$code" != "200" ] && [ "$code" != "201" ]; then
+            echo "::error::npm trusted publishing is not set up for $name with this workflow (HTTP $code): $(jq -r '.message // .error // empty' /tmp/exchange.json)"
+            exit 1
+          fi
+          echo "npm trusts this workflow for $name (HTTP $code)"
       - name: Tag matches package version
         if: github.ref_type == 'tag'
         run: |
@@ -29,7 +49,8 @@ jobs:
             exit 1
           fi
       - run: npm ci
+        if: ${{ !inputs.check_only }}
       - run: npm test
+        if: ${{ !inputs.check_only }}
       - run: npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        if: ${{ !inputs.check_only }}
