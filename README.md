@@ -35,7 +35,7 @@ Agent: Market scan 4h: 98 of 148 coins bullish (98 bullish · 21 neutral · 29 b
 | `FIZZL_CHECK_WALLET_APPROVALS` | [PlainText](https://plaintext.fizzl.eu) | Checks an EVM wallet's live token/NFT approvals and explains the risk: SAFE / CAUTION / RISK | $0.10 | Solana or Base |
 | `FIZZL_EXPLAIN_APPROVAL` | [PlainText](https://plaintext.fizzl.eu) | Explains a pasted approval/permission JSON in plain language with a verdict | $0.05 | Solana or Base |
 | `FIZZL_PREFLIGHT_X402` | [x402 Doctor](https://x402-doctor.fizzl.eu) | Before paying an unknown x402 endpoint: GO / CAUTION / NO-GO, the recommended payment option and why (would not settle, over your budget, charges more than advertised, not HTTPS, unknown token). Never pays the endpoint itself | $0.001 | Solana or Base |
-| `FIZZL_PRESIGN_CHECK` | [presign-guard](https://presign-guard.fizzl.eu) | Before signing a Solana transaction (paste the base64, or pass `transaction`), an EVM transaction, token approval or EIP-712 signature (Permit, Permit2, Seaport, x402 payment), or a plain message (`message`): GREEN / ORANGE / RED with reason codes. On Solana every instruction is read and the transaction simulated (a token account handed to someone else is red; unlimited delegates, durable nonces, hidden owner or delegate changes are orange). On EVM: who gets access and the token itself (honeypots, fake tokens such as a fake USDC). Pass `intent` (what the agent means to do) to catch a transaction that does something else. Only sign on green, ask a person on orange, never sign on red. Add "explain" (optionally "in Dutch") for a plain-language explanation | $0.01 ($0.03 explained) | Base |
+| `FIZZL_PRESIGN_CHECK` | [presign-guard](https://presign-guard.fizzl.eu) | Before signing a Solana transaction (paste the base64, or pass `transaction`), an EVM transaction, token approval or EIP-712 signature (Permit, Permit2, Seaport, x402 payment), or a plain message (`message`): GREEN / ORANGE / RED with reason codes. On Solana every instruction is read and the transaction simulated (a token account handed to someone else is red; unlimited delegates, durable nonces, hidden owner or delegate changes are orange). On EVM: who gets access and the token itself (honeypots, fake tokens such as a fake USDC). Pass `intent` (what the agent means to do) to catch a transaction that does something else. Only sign on green, ask a person on orange, never sign on red. Add "explain" (optionally "in Dutch") for a plain-language explanation | $0.01 ($0.03 explained) | Solana, Base |
 | `FIZZL_DIAGNOSE_X402` | [x402 Doctor](https://x402-doctor.fizzl.eu) | Diagnoses why an x402 paid endpoint fails (challenge, accepts[], Solana settlement, Bazaar/OpenAPI discovery, paywall) with a fix hint per check. Never pays the endpoint itself | $0.01 | Solana or Base |
 
 A `FIZZL_SERVICES` provider tells the agent which of these tools it has and which wallets pay for them.
@@ -74,8 +74,8 @@ export const character = {
 | `FIZZL_DOCTOR_SIGNERS`, `FIZZL_PRESIGN_SIGNERS` | no | the published signers | Comma-separated pinned signer addresses (for another deployment). |
 | `FIZZL_RECEIPT_AUTHORITY` | no | the Fizzl payout wallet | Wallet whose certificates also make a signer trusted, so a rotated key keeps working; `none` accepts only the pinned signers. |
 
-With both keys configured, services that accept both are paid on Solana. presign-guard is paid on Base only, so it
-needs `EVM_PRIVATE_KEY`. Use a **dedicated wallet** holding only what the agent may
+With both keys configured, services that accept both are paid on Solana; all of them accept USDC on Solana, so a
+Solana key alone is enough. Use a **dedicated wallet** holding only what the agent may
 spend; the spend cap limits a single payment, not the total.
 
 ## Signed verdicts
